@@ -22,7 +22,7 @@ dag = DAG(
 
 # seoul_mountain_park 테이블 생성 쿼리
 CREATE_QUERY = """
-CREATE TABLE IF NOT EXISTS seoul_mountain_park (
+CREATE TABLE IF NOT EXISTS raw_data.seoul_mountain_park (
     key VARCHAR(30),
     name VARCHAR(50),
     address VARCHAR(200),
@@ -69,7 +69,7 @@ def transform(**context):
 # 변환한 데이터 적재하는 함수
 def load(**context):
     logging.info("Load start")
-    pg_hook = PostgresHook(postgres_conn_id="myRedshift")
+    pg_hook = PostgresHook(postgres_conn_id="rs_conn")
     trans_data = context['ti'].xcom_pull(task_ids='mountainPark_transform')
     for data in trans_data:
         key = data['key']
@@ -78,7 +78,7 @@ def load(**context):
         city = data['city']
         gu = data['gu']
         dong = data['dong']
-        insert_query = f"""INSERT INTO seoul_mountain_park (key, name, address, city, gu, dong)
+        insert_query = f"""INSERT INTO raw_data.seoul_mountain_park (key, name, address, city, gu, dong)
                             VALUES ('{key}', '{name}', '{address}', '{city}', '{gu}', '{dong}')"""
         
         pg_hook.run(insert_query)
@@ -88,7 +88,7 @@ def load(**context):
 # seoul_mountain_park 테이블 생성 Task
 createMountainParkTable = PostgresOperator(
     task_id = "create_mountainPark_table",
-    postgres_conn_id='myRedshift',
+    postgres_conn_id='rs_conn',
     sql=CREATE_QUERY,
     dag=dag
 )

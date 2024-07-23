@@ -21,7 +21,7 @@ dag = DAG(
 
 # seoul_subway 테이블 생성 쿼리
 CREATE_QUERY = """
-CREATE TABLE IF NOT EXISTS seoul_subway (
+CREATE TABLE IF NOT EXISTS raw_data.seoul_subway (
     station_id VARCHAR(4),
     station_name VARCHAR(100),
     line VARCHAR(50),
@@ -65,7 +65,7 @@ def transform(**context):
 # 지하철 데이터 적재
 def load(**context):
     logging.info("Load start")
-    pg_hook = PostgresHook(postgres_conn_id="myRedshift")
+    pg_hook = PostgresHook(postgres_conn_id="rs_conn")
     trans_data = context['ti'].xcom_pull(task_ids='subwayStation_transform')
     for data in trans_data:
         id = data['station_id']
@@ -73,7 +73,7 @@ def load(**context):
         line = data['line']
         lat = data['lat']
         lon = data['lon']
-        insert_query = f"""INSERT INTO seoul_subway (station_id, station_name, line, lat, lon)
+        insert_query = f"""INSERT INTO raw_data.seoul_subway (station_id, station_name, line, lat, lon)
                             VALUES ('{id}', '{name}', '{line}', '{lat}', '{lon}')"""
         pg_hook.run(insert_query)
     logging.info("Load ended")
@@ -81,7 +81,7 @@ def load(**context):
 # seoul_subway 테이블 생성 Task
 createSubwayTable = PostgresOperator(
     task_id = "create_subway_table",
-    postgres_conn_id='myRedshift',
+    postgres_conn_id='rs_conn',
     sql=CREATE_QUERY,
     dag=dag
 )
