@@ -22,7 +22,7 @@ dag = DAG(
 
 # seoul_hospital 테이블 생성 쿼리
 CREATE_QUERY = """
-CREATE TABLE IF NOT EXISTS seoul_hospital (
+CREATE TABLE IF NOT EXISTS raw_data.seoul_hospital (
     id VARCHAR(10),
     address VARCHAR(200),
     type_name VARCHAR(30),
@@ -110,7 +110,7 @@ def load_to_redshift():
 
     # Redshift용 COPY 명령문
     copy_query = f"""
-    COPY seoul_hospital
+    COPY raw_data.seoul_hospital
     FROM 's3://team-ariel-2-data/data/seoul_hospital.csv'
     IAM_ROLE 'arn:aws:iam::862327261051:role/service-role/AmazonRedshift-CommandsAccessRole-20240716T180249'
     CSV
