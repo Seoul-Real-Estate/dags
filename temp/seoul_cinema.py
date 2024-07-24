@@ -5,21 +5,22 @@ from airflow.models import Variable
 from datetime import datetime, timedelta
 import requests
 import psycopg2
+from geopy.geocoders import Nominatim
+import time
 
-# Redshift 연결 함수
 def get_Redshift_connection(autocommit=True):
-    hook = PostgresHook(postgres_conn_id='redshift_dev_db')
+    hook = PostgresHook(postgres_conn_id='redshift_dev')
     conn = hook.get_conn()
     conn.autocommit = autocommit
     return conn.cursor()
 
-# 테이블 생성 태스크
 @task
 def create_table(schema, table):
     cur = get_Redshift_connection()
     create_query = f"""
-    drop table if exists {schema}.{table};
-    CREATE TABLE IF NOT EXISTS {schema}.{table} (
+    DROP TABLE IF EXISTS {schema}.{table};
+    CREATE TABLE {schema}.{table} (
+        id INT IDENTITY(1, 1) PRIMARY KEY,
         screen_name VARCHAR(100),
         status_code VARCHAR(10),
         status_name VARCHAR(40),
@@ -30,8 +31,8 @@ def create_table(schema, table):
         last_modified_date DATE, 
         update_type CHAR(1),
         update_date DATE,
-        tm_x DECIMAL(20, 9),
-        tm_y DECIMAL(20, 9)
+        latitude FLOAT,
+        longitude FLOAT
     );
     """
     cur.execute(create_query)
@@ -40,13 +41,15 @@ def get_list_total_count():
     api_key = Variable.get('seoul_api_key')
     url = f"http://openapi.seoul.go.kr:8088/{api_key}/json/LOCALDATA_031302/1/1"
     response = requests.get(url).json()
-    return response["LOCALDATA_031302"]["list_total_count"]
+    total_count = response["LOCALDATA_031302"]["list_total_count"]
+    return total_count
 
 @task
-def process_data(unit_value):
+def process_data():
     api_key = Variable.get('seoul_api_key')
     start_index = 1
-    all_records = []
+    unit_value = 1000  # 한 번에 최대 1000건 가능
+    records = []
 
     total_count = get_list_total_count()
 
@@ -55,44 +58,72 @@ def process_data(unit_value):
         url = f"http://openapi.seoul.go.kr:8088/{api_key}/json/LOCALDATA_031302/{start_index}/{end_index}"
         response = requests.get(url).json()
         
-        cinema_list = response["LOCALDATA_031302"]["row"]
-        for cinema in cinema_list:
-            last_modified_date = datetime.strptime(cinema['LASTMODTS'], '%Y-%m-%d %H:%M:%S').strftime("%Y-%m-%d") if cinema['LASTMODTS'] else None
-            update_date = datetime.strptime(cinema['UPDATEDT'], '%Y-%m-%d %H:%M:%S.%f').strftime("%Y-%m-%d") if cinema['UPDATEDT'] else None
-            tm_x = float(cinema['X']) if cinema['X'] else None
-            tm_y = float(cinema['Y']) if cinema['Y'] else None
-
+        data_list = response["LOCALDATA_031302"]["row"]
+        for data in data_list:
+            last_modified_date = datetime.strptime(data['LASTMODTS'], '%Y-%m-%d %H:%M:%S').strftime("%Y-%m-%d") if data['LASTMODTS'] else None
+            update_date = datetime.strptime(data['UPDATEDT'], '%Y-%m-%d %H:%M:%S.%f').strftime("%Y-%m-%d") if data['UPDATEDT'] else None
+            
             record = (
-                cinema['BPLCNM'],
-                cinema['TRDSTATEGBN'],
-                cinema['TRDSTATENM'],
-                cinema['DTLSTATEGBN'],
-                cinema['DTLSTATENM'],
-                cinema['SITEWHLADDR'],
-                cinema['RDNWHLADDR'],
+                data['BPLCNM'],
+                data['TRDSTATEGBN'],
+                data['TRDSTATENM'],
+                data['DTLSTATEGBN'],
+                data['DTLSTATENM'],
+                data['SITEWHLADDR'],
+                data['RDNWHLADDR'],
                 last_modified_date,
-                cinema['UPDATEGBN'],
-                update_date,
-                tm_x,
-                tm_y
+                data['UPDATEGBN'],
+                update_date
             )
-            all_records.append(record)
+            records.append(record)
         
         start_index += unit_value
 
-    return all_records
+    return records
+
+@task
+def geocode(records):
+    api_key = Variable.get('vworld_api_key')
+    geocoded_records = []
+
+    for record in records:
+        road_address = record[6]  # 도로명 주소 'RDNWHLADDR'
+        apiurl = "https://api.vworld.kr/req/address?"
+        params = {
+            "service": "address",
+            "request": "getcoord",
+            "crs": "epsg:4326",
+            "address": road_address,
+            "format": "json",
+            "type": "road",
+            "key": api_key
+        }
+        response = requests.get(apiurl, params=params)
+        if response.status_code == 200:
+            try:
+                response_json = response.json()
+                result = response_json['response']['result']['point']
+                latitude = result['y']  # 위도
+                longitude = result['x']  # 경도
+            except (IndexError, KeyError):
+                latitude = None
+                longitude = None
+            
+            geocoded_record = list(record) + [latitude, longitude]
+            geocoded_records.append(tuple(geocoded_record))
+
+    return geocoded_records
 
 @task
 def load(schema, table, records):
     cur = get_Redshift_connection(False)
     try:
         cur.execute("BEGIN;")
-        cur.execute(f"DELETE FROM {schema}.{table};")
         insert_query = f"""
         INSERT INTO {schema}.{table} (
             screen_name, status_code, status_name, detailed_status_code, 
             detailed_status_name, address, road_address, last_modified_date, 
-            update_type, update_date, tm_x, tm_y
+            update_type, update_date, latitude, longitude
         ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         for record in records:
@@ -106,19 +137,19 @@ def load(schema, table, records):
 with DAG(
     dag_id='seoul_cinema',
     start_date=datetime(2024, 7, 10),
-    schedule_interval='0 1 * * *',  # 매일 오전 1시에 실행
+    schedule_interval='0 0 * * 6',  # 매주 금요일 정각에 실행
     catchup=False,
     default_args={
         'retries': 1,
         'retry_delay': timedelta(minutes=5),
     }
 ) as dag:
-    schema = 'jki5410'
+    schema = 'raw_data'
     table = 'seoul_cinema'
-    unit_value = 1000  # index 단위값 설정(한 번에 1000개까지 가능)
 
     create = create_table(schema, table)
-    all_records = process_data(unit_value)
-    load_task = load(schema, table, all_records)
+    records = process_data()
+    geocode_task = geocode(records)
+    load_task = load(schema, table, geocode_task)
 
-    create >> all_records >> load_task
+    create >> records >> geocode_task >> load_task
