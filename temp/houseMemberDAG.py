@@ -29,8 +29,7 @@ kst = pendulum.timezone("Asia/Seoul")
 dag = DAG(
     dag_id='houseMemberDAG',
     start_date=datetime(2024, 7, 16, tzinfo=kst),
-    schedule=None,
-    # schedule_interval='10 0 * * *',
+    schedule_interval='@yearly',
     catchup=False
 )
 
