@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 from airflow.decorators import task, dag
 from airflow.providers.postgres.hooks.postgres import PostgresHook
-from sqlalchemy_utils.types.pg_composite import psycopg2
 
 default_args = {
     'owner': 'yong',
@@ -16,7 +15,7 @@ default_args = {
 def get_create_table_sqls(schema):
     return {
         'naver_complex': f"""
-            CREATE TABLE {schema}.naver_complex (
+            CREATE TABLE IF NOT EXISTS {schema}.naver_complex (
                 complexNo               VARCHAR(255) PRIMARY KEY,
                 complexName             VARCHAR(255),
                 cortarNo                VARCHAR(255),
@@ -42,7 +41,7 @@ def get_create_table_sqls(schema):
             );
         """,
         'naver_realtor': f"""
-            CREATE TABLE {schema}.naver_realtor (
+            CREATE TABLE IF NOT EXISTS {schema}.naver_realtor (
                 realtorId               VARCHAR(255) PRIMARY KEY,
                 realtorName             VARCHAR(255),
                 representativeName      VARCHAR(255),
@@ -61,7 +60,7 @@ def get_create_table_sqls(schema):
             );
         """,
         'dabang_complex': f"""
-            CREATE TABLE {schema}.dabang_complex (
+            CREATE TABLE IF NOT EXISTS {schema}.dabang_complex (
                 complex_id                  VARCHAR(255) PRIMARY KEY,
                 complex_name                VARCHAR(255),
                 household_num               INTEGER,
@@ -77,7 +76,7 @@ def get_create_table_sqls(schema):
             );
         """,
         'dabang_realtor': f"""
-            CREATE TABLE {schema}.dabang_realtor (
+            CREATE TABLE IF NOT EXISTS {schema}.dabang_realtor (
                 id          VARCHAR(255) PRIMARY KEY,
                 name        VARCHAR(255),
                 address     VARCHAR(255),
@@ -94,7 +93,7 @@ def get_create_table_sqls(schema):
             );
         """,
         'complex': f"""
-            CREATE TABLE {schema}.complex (
+            CREATE TABLE IF NOT EXISTS {schema}.complex (
                 id              VARCHAR(255) PRIMARY KEY,
                 name            VARCHAR(255),
                 household_num   INTEGER,
@@ -110,7 +109,7 @@ def get_create_table_sqls(schema):
             );
         """,
         'realtor': f"""
-            CREATE TABLE {schema}.realtor (
+            CREATE TABLE IF NOT EXISTS {schema}.realtor (
                 id                      VARCHAR(255) PRIMARY KEY,
                 name                    VARCHAR(255),
                 representative_name     VARCHAR(255),
@@ -126,7 +125,7 @@ def get_create_table_sqls(schema):
             );
         """,
         'naver_real_estate': f"""
-            CREATE TABLE {schema}.naver_real_estate (
+            CREATE TABLE IF NOT EXISTS {schema}.naver_real_estate (
                 articleNo               VARCHAR(255) PRIMARY KEY ,
                 realtorId               VARCHAR(255),
                 complexNo               VARCHAR(255),
@@ -170,7 +169,7 @@ def get_create_table_sqls(schema):
             );
         """,
         'dabang_real_estate': f"""
-            CREATE TABLE {schema}.dabang_real_estate (
+            CREATE TABLE IF NOT EXISTS {schema}.dabang_real_estate (
                 id                          VARCHAR(255) PRIMARY KEY,
                 dabang_realtor_id           VARCHAR(255),
                 dabang_complex_id           VARCHAR(255),
@@ -215,7 +214,7 @@ def get_create_table_sqls(schema):
             );
         """,
         'real_estate': f"""
-            CREATE TABLE {schema}.real_estate (
+            CREATE TABLE IF NOT EXISTS {schema}.real_estate (
                 id                      VARCHAR(255) PRIMARY KEY,
                 realtor_id              VARCHAR(255),
                 complex_id    VARCHAR(255),
@@ -261,31 +260,10 @@ def get_redshift_connection(autocommit=True):
     return conn.cursor()
 
 
-@task.branch
-def check_table_exists(schema, table_name):
-    cur = get_redshift_connection()
-
-    try:
-        cur.execute(f"SELECT 1 FROM {schema}.{table_name} LIMIT 1")
-        table_exists = True
-    except psycopg2.errors.UndefinedTable:
-        table_exists = False
-
-    if table_exists:
-        return f'skip_{table_name}_table'
-
-    return f'create_{table_name}_table'
-
-
 @task
 def create_table(create_table_sql):
     cur = get_redshift_connection()
     cur.execute(create_table_sql)
-
-
-@task
-def skip_task():
-    pass
 
 
 @dag(
@@ -299,11 +277,7 @@ def skip_task():
 def create_tables():
     schema = 'wjstkddyd420'
     for table_name, create_sql in get_create_table_sqls(schema).items():
-        check_task = check_table_exists.override(task_id=f'check_{table_name}_exist')(schema=schema, table_name=table_name)
         create_task = create_table.override(task_id=f'create_{table_name}_table')(create_table_sql=create_sql)
-        skip_task_instance = skip_task.override(task_id=f'skip_{table_name}_table')()
-
-        check_task >> [create_task, skip_task_instance]
 
 
 create_tables = create_tables()
