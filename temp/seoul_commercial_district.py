@@ -6,15 +6,17 @@ from datetime import datetime, timedelta
 import requests
 import psycopg2
 
-def get_Redshift_connection(autocommit=True):
+# Redshift 연결 함수
+def get_redshift_connection(autocommit=True):
     hook = PostgresHook(postgres_conn_id='redshift_dev')
     conn = hook.get_conn()
     conn.autocommit = autocommit
     return conn.cursor()
 
+# 테이블 생성 task
 @task
 def create_table(schema, table):
-    cur = get_Redshift_connection()
+    cur = get_redshift_connection()
     create_query = f"""
     DROP TABLE IF EXISTS {schema}.{table};
     CREATE TABLE {schema}.{table} (
@@ -29,13 +31,21 @@ def create_table(schema, table):
     """
     cur.execute(create_query)
 
+# 전체 데이터의 수 반환 함수
 def get_list_total_count():
     api_key = Variable.get('seoul_api_key')
     url = f"http://openapi.seoul.go.kr:8088/{api_key}/json/VwsmSignguStorW/1/1"
-    response = requests.get(url).json()
-    total_count = response["VwsmSignguStorW"]["list_total_count"]
-    return total_count
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        total_count = data["VwsmSignguStorW"]["list_total_count"]
+        return total_count
+    except requests.RequestException as error:
+        print(f"API request failed: {error}")
+        raise
 
+# 데이터 수집 task
 @task
 def process_data():
     api_key = Variable.get('seoul_api_key')
@@ -44,30 +54,35 @@ def process_data():
     records = []
     total_count = get_list_total_count()
 
+    # unit_value 단위로 나누어 api 요청
     while start_index <= total_count:
         end_index = min(start_index + unit_value - 1, total_count)
         url = f"http://openapi.seoul.go.kr:8088/{api_key}/json/VwsmSignguStorW/{start_index}/{end_index}"
-        response = requests.get(url).json()
-        
-        data_list = response["VwsmSignguStorW"]["row"]
-        for data in data_list:
-            record = (
-                data['STDR_YYQU_CD'],
-                data['SIGNGU_CD'],
-                data['SIGNGU_CD_NM'],
-                data['SVC_INDUTY_CD'],
-                data['SVC_INDUTY_CD_NM'],
-                int(data['STOR_CO'])
-            )
-            records.append(record)
-        
-        start_index += unit_value
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            data_list = response.json()["VwsmSignguStorW"]["row"]
+            for data in data_list:
+                record = (
+                    data['STDR_YYQU_CD'],
+                    data['SIGNGU_CD'],
+                    data['SIGNGU_CD_NM'],
+                    data['SVC_INDUTY_CD'],
+                    data['SVC_INDUTY_CD_NM'],
+                    int(data['STOR_CO'])
+                )
+                records.append(record)
+            start_index += unit_value
+        except requests.RequestException as error:
+            print(f"API request failed: {error}")
+            raise
 
     return records
 
+# redshift 테이블에 적재하는 task
 @task
 def load(schema, table, records):
-    cur = get_Redshift_connection(False)
+    cur = get_redshift_connection(False)
     try:
         cur.execute("BEGIN;")
         insert_query = f"""
@@ -79,7 +94,7 @@ def load(schema, table, records):
             cur.execute(insert_query, record)
         cur.execute("COMMIT;")
     except (Exception, psycopg2.DatabaseError) as error:
-        print(error)
+        print(f"Database error: {error}")
         cur.execute("ROLLBACK;")
         raise
 
