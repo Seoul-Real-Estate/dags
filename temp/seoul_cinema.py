@@ -5,18 +5,19 @@ from airflow.models import Variable
 from datetime import datetime, timedelta
 import requests
 import psycopg2
-from geopy.geocoders import Nominatim
 import time
 
-def get_Redshift_connection(autocommit=True):
+# Redshift 연결 함수
+def get_redshift_connection(autocommit=True):
     hook = PostgresHook(postgres_conn_id='redshift_dev')
     conn = hook.get_conn()
     conn.autocommit = autocommit
     return conn.cursor()
 
+# 테이블 생성 task
 @task
 def create_table(schema, table):
-    cur = get_Redshift_connection()
+    cur = get_redshift_connection()
     create_query = f"""
     DROP TABLE IF EXISTS {schema}.{table};
     CREATE TABLE {schema}.{table} (
@@ -37,13 +38,22 @@ def create_table(schema, table):
     """
     cur.execute(create_query)
 
+# API 요청에 대한 전체 데이터의 개수 반환하는 함수
 def get_list_total_count():
     api_key = Variable.get('seoul_api_key')
     url = f"http://openapi.seoul.go.kr:8088/{api_key}/json/LOCALDATA_031302/1/1"
-    response = requests.get(url).json()
-    total_count = response["LOCALDATA_031302"]["list_total_count"]
-    return total_count
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        total_count = data["LOCALDATA_031302"]["list_total_count"]
+        return total_count
+    
+    except requests.RequestException as error:
+        print(f"API request failed: {error}")
+        raise
 
+# 데이터 수집 task
 @task
 def process_data():
     api_key = Variable.get('seoul_api_key')
@@ -53,34 +63,42 @@ def process_data():
 
     total_count = get_list_total_count()
 
+    # unit_value 단위로 나누어 api 요청
     while start_index <= total_count:
         end_index = min(start_index + unit_value - 1, total_count)
         url = f"http://openapi.seoul.go.kr:8088/{api_key}/json/LOCALDATA_031302/{start_index}/{end_index}"
-        response = requests.get(url).json()
-        
-        data_list = response["LOCALDATA_031302"]["row"]
-        for data in data_list:
-            last_modified_date = datetime.strptime(data['LASTMODTS'], '%Y-%m-%d %H:%M:%S').strftime("%Y-%m-%d") if data['LASTMODTS'] else None
-            update_date = datetime.strptime(data['UPDATEDT'], '%Y-%m-%d %H:%M:%S.%f').strftime("%Y-%m-%d") if data['UPDATEDT'] else None
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            data_list = response.json()["LOCALDATA_031302"]["row"]
             
-            record = (
-                data['BPLCNM'],
-                data['TRDSTATEGBN'],
-                data['TRDSTATENM'],
-                data['DTLSTATEGBN'],
-                data['DTLSTATENM'],
-                data['SITEWHLADDR'],
-                data['RDNWHLADDR'],
-                last_modified_date,
-                data['UPDATEGBN'],
-                update_date
-            )
-            records.append(record)
-        
-        start_index += unit_value
+            for data in data_list:
+                last_modified_date = datetime.strptime(data['LASTMODTS'], '%Y-%m-%d %H:%M:%S').strftime("%Y-%m-%d") if data['LASTMODTS'] else None
+                update_date = datetime.strptime(data['UPDATEDT'], '%Y-%m-%d %H:%M:%S.%f').strftime("%Y-%m-%d") if data['UPDATEDT'] else None
+                
+                record = (
+                    data['BPLCNM'],
+                    data['TRDSTATEGBN'],
+                    data['TRDSTATENM'],
+                    data['DTLSTATEGBN'],
+                    data['DTLSTATENM'],
+                    data['SITEWHLADDR'],
+                    data['RDNWHLADDR'],
+                    last_modified_date,
+                    data['UPDATEGBN'],
+                    update_date
+                )
+                records.append(record)
+            
+            start_index += unit_value
 
+        except requests.RequestException as error:
+            print(f"API request failed: {error}")
+            raise
+        
     return records
 
+# 위/경도 좌표값 추가하는 task
 @task
 def geocode(records):
     api_key = Variable.get('vworld_api_key')
@@ -114,9 +132,10 @@ def geocode(records):
 
     return geocoded_records
 
+# redshift 테이블에 적재하는 task
 @task
 def load(schema, table, records):
-    cur = get_Redshift_connection(False)
+    cur = get_redshift_connection(False)
     try:
         cur.execute("BEGIN;")
         insert_query = f"""
@@ -137,7 +156,7 @@ def load(schema, table, records):
 with DAG(
     dag_id='seoul_cinema',
     start_date=datetime(2024, 7, 10),
-    schedule_interval='0 0 * * 6',  # 매주 금요일 정각에 실행
+    schedule_interval='@weekly',
     catchup=False,
     default_args={
         'retries': 1,
