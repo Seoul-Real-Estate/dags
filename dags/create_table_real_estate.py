@@ -272,12 +272,12 @@ def create_table(create_table_sql):
     schedule_interval=None,
     start_date=datetime(2024, 7, 28),
     catchup=False,
-    tags=['none', 'create table']
+    tags=['none', 'create table', 'real_estate']
 )
-def create_tables():
+def create_tables_real_estate():
     schema = 'wjstkddyd420'
     for table_name, create_sql in get_create_table_sqls(schema).items():
         create_task = create_table.override(task_id=f'create_{table_name}_table')(create_table_sql=create_sql)
 
 
-create_tables = create_tables()
+create_tables_real_estate = create_tables_real_estate()
