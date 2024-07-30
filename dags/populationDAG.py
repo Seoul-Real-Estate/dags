@@ -94,10 +94,8 @@ def extract(**context):
 
     time.sleep(10)
 
-    year = datetime.now().strftime('%Y')
-    month =  int(datetime.now().strftime('%m'))
-    download_file_name = f"등록인구(월별)_{year}0{month}*"
-    data_file_name = f"seoul_population_{year}0{month-1}"
+    download_file_name = "등록인구(월별)_*"
+    data_file_name = "seoul_population.csv"
 
     files = glob.glob(os.path.join(airflow_path, download_file_name))
     if files:
@@ -149,14 +147,13 @@ def upload_to_S3(path, **kwargs):
     hook = S3Hook(aws_conn_id='S3_conn')
     hook.load_file(
         filename=path,
-        key=f'data/{name}.csv', 
+        key=f'data/seoul_population.csv', 
         bucket_name=bucket_name, 
         replace=True
     )
-    return name
 
 # S3에서 Redshift로 COPY해서 적재하는 함수
-def load_to_redshift(name, **kwargs):
+def load_to_redshift():
     redshift_hook = PostgresHook(postgres_conn_id='rs_conn')
     conn = redshift_hook.get_conn()
     cursor = conn.cursor()
@@ -164,7 +161,7 @@ def load_to_redshift(name, **kwargs):
     # Redshift용 COPY 명령문
     copy_query = f"""
     COPY raw_data.seoul_population
-    FROM 's3://team-ariel-2-data/data/{name}'
+    FROM 's3://team-ariel-2-data/data/seoul_population.csv'
     IAM_ROLE 'arn:aws:iam::862327261051:role/service-role/AmazonRedshift-CommandsAccessRole-20240716T180249'
     CSV
     """
@@ -206,7 +203,6 @@ upload_data_to_S3 = PythonOperator(
 load_data_to_redshift = PythonOperator(
     task_id = "load_to_redshift",
     python_callable=load_to_redshift,
-    op_kwargs={'path': '{{ task_instance.xcom_pull(task_ids="upload_to_S3") }}'},
     dag=dag
 )
 
