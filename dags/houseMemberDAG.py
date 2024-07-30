@@ -117,14 +117,13 @@ def extract(**context):
 
     driver.quit() 
     logging.info("Extract done")
-    return file_name
+    return file_path
 
 # 다운받은 CSV 파일 변환하는 함수
 def transform(**context):
     logging.info("transform started")
     try:
-        csv_file_name = context['ti'].xcom_pull(task_ids="house_extract")
-        csv_file_path = f'downloads/{csv_file_name}'
+        csv_file_path = context['ti'].xcom_pull(task_ids="house_extract")
         df = pd.read_csv(csv_file_path)
         
         logging.info("DataFrame loaded successfully")
