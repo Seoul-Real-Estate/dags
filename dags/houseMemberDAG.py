@@ -2,6 +2,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.postgres.operators.postgres import PostgresOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
+from airflow.models.variable import Variable
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -53,14 +54,15 @@ CREATE TABLE IF NOT EXISTS raw_data.seoul_house_member (
 def extract(**context):
     logging.info("Extract started")
 
+    airflow_path = Variable.get('airflow_download_path')
+
     chrome_options = Options()
     chrome_options.add_experimental_option("detach", True)
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--headless")  # Headless 모드 설정
-    chrome_options.add_argument("--download.default_directory=/downloads")
     chrome_options.add_experimental_option("prefs", {
-        "download.default_directory": "/opt/airflow/downloads",
+        "download.default_directory": airflow_path,
         "download.prompt_for_download": False,
         "download.directory_upgrade": True,
         "safebrowsing.enabled": True
@@ -93,19 +95,19 @@ def extract(**context):
     time.sleep(10)
 
     download_dir = '/opt/airflow/downloads'
-    files = glob.glob(os.path.join(download_dir, "가구원수별+가구-+읍면동(연도+끝자리+0,5),+시군구(그+외+연도)_202407*"))
+    files = glob.glob(os.path.join(download_dir, "가구원수별+가구-+읍면동(연도+끝자리+0,5),+시군구(그+외+연도)_*"))
     if files:
         latest_file = max(files, key=os.path.getctime)
-        new_name = os.path.join(download_dir, "seoul_house_member_202406.csv")
+        new_name = os.path.join(download_dir, "seoul_house_member.csv")
         os.rename(latest_file, new_name)
         logging.info(f"File renamed to: {new_name}")
     else:
         logging.info("No files found for renaming")
 
 
-    file_name = 'seoul_house_member_202406.csv'
+    file_name = 'seoul_house_member.csv'
     
-    file_path = f'/opt/airflow/downloads/{file_name}'
+    file_path = f'{airflow_path}/{file_name}'
     
     file = Path(file_path)
     if file.is_file():
@@ -120,9 +122,8 @@ def extract(**context):
 # 다운받은 CSV 파일 변환하는 함수
 def transform(**context):
     logging.info("transform started")
-    global csv_file_name, csv_file_path
-    csv_file_name = context['ti'].xcom_pull(task_ids="house_extract")
     try:
+        csv_file_name = context['ti'].xcom_pull(task_ids="house_extract")
         csv_file_path = f'downloads/{csv_file_name}'
         df = pd.read_csv(csv_file_path)
         
@@ -143,7 +144,7 @@ def upload_to_S3(file_path, **kwargs):
     hook = S3Hook(aws_conn_id='S3_conn')
     hook.load_file(
         filename=file_path,
-        key='data/seoul_house_member_202406.csv', 
+        key='data/seoul_house_member.csv', 
         bucket_name= bucket_name, 
         replace=True
     )
@@ -157,7 +158,7 @@ def load_to_redshift():
     # Redshift용 COPY 명령문
     copy_query = f"""
     COPY raw_data.seoul_house_member
-    FROM 's3://team-ariel-2-data/data/seoul_house_member_202406.csv'
+    FROM 's3://team-ariel-2-data/data/seoul_house_member.csv'
     IAM_ROLE 'arn:aws:iam::862327261051:role/service-role/AmazonRedshift-CommandsAccessRole-20240716T180249'
     CSV
     """
