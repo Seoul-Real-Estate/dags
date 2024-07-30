@@ -94,11 +94,10 @@ def extract(**context):
 
     time.sleep(10)
 
-    download_dir = '/opt/airflow/downloads'
-    files = glob.glob(os.path.join(download_dir, "가구원수별+가구-+읍면동(연도+끝자리+0,5),+시군구(그+외+연도)_*"))
+    files = glob.glob(os.path.join(airflow_path, "가구원수별+가구-+읍면동(연도+끝자리+0,5),+시군구(그+외+연도)_*"))
     if files:
         latest_file = max(files, key=os.path.getctime)
-        new_name = os.path.join(download_dir, "seoul_house_member.csv")
+        new_name = os.path.join(airflow_path, "seoul_house_member.csv")
         os.rename(latest_file, new_name)
         logging.info(f"File renamed to: {new_name}")
     else:
