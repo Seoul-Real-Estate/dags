@@ -100,8 +100,8 @@ def extract(**context):
 # 다운받은 CSV 파일 변환하는 함수
 def transform(**context):
     logging.info("transform started")
-    xlsx_file_path = context['ti'].xcom_pull(task_ids="bus_extract")
     try:
+        xlsx_file_path = context['ti'].xcom_pull(task_ids="bus_extract")
         xlsx = pd.read_excel(xlsx_file_path)
 
         new_file_path = xlsx_file_path.replace('xlsx', 'csv')
