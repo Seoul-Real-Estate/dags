@@ -36,7 +36,7 @@ def extract(**context):
     chrome_options.add_argument("--headless")  # Headless 모드 설정
     chrome_options.add_argument("--download.default_directory=/downloads")
     chrome_options.add_experimental_option("prefs", {
-        "download.default_directory": "./",
+        "download.default_directory": "/home/ubuntu/airflow/downloads",
         "download.prompt_for_download": False,
         "download.directory_upgrade": True,
         "safebrowsing.enabled": True
