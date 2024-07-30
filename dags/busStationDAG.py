@@ -47,6 +47,8 @@ CREATE TABLE IF NOT EXISTS raw_data.seoul_bus_station (
 def extract(**context):
     logging.info("Extract started")
 
+    airflow_path = "/home/ubuntu/airflow/downloads"
+
     chrome_options = Options()
     chrome_options.add_experimental_option("detach", True)
     chrome_options.add_argument("--no-sandbox")
@@ -54,7 +56,7 @@ def extract(**context):
     chrome_options.add_argument("--headless")  # Headless 모드 설정
     chrome_options.add_argument("--download.default_directory=/downloads")
     chrome_options.add_experimental_option("prefs", {
-        "download.default_directory": "/opt/airflow/downloads",
+        "download.default_directory": airflow_path,
         "download.prompt_for_download": False,
         "download.directory_upgrade": True,
         "safebrowsing.enabled": True
@@ -71,11 +73,10 @@ def extract(**context):
 
     time.sleep(10)
 
-    download_dir = '/opt/airflow/downloads'
-    files = glob.glob(os.path.join(download_dir, "서울시 시내버스 정류소 현황_*"))
+    files = glob.glob(os.path.join(airflow_path, "서울시 시내버스 정류소 현황_*"))
     if files:
         latest_file = max(files, key=os.path.getctime)
-        new_name = os.path.join(download_dir, "seoul_bus_station.xlsx")
+        new_name = os.path.join(airflow_path, "seoul_bus_station.xlsx")
         os.rename(latest_file, new_name)
         logging.info(f"File renamed to: {new_name}")
     else:
@@ -84,7 +85,7 @@ def extract(**context):
 
     file_name = 'seoul_bus_station.xlsx'
     
-    file_path = f'/opt/airflow/downloads/{file_name}'
+    file_path = f'{airflow_path}/{file_name}'
     
     file = Path(file_path)
     if file.is_file():
@@ -94,19 +95,16 @@ def extract(**context):
 
     driver.quit() 
     logging.info("Extract done")
-    return file_name
+    return file_path
 
 # 다운받은 CSV 파일 변환하는 함수
 def transform(**context):
     logging.info("transform started")
-    global xlsx_file_name, xlsx_file_path
-    xlsx_file_name = context['ti'].xcom_pull(task_ids="bus_extract")
+    xlsx_file_path = context['ti'].xcom_pull(task_ids="bus_extract")
     try:
-        xlsx_file_path = f'downloads/{xlsx_file_name}'
-        
         xlsx = pd.read_excel(xlsx_file_path)
 
-        new_file_path = 'downloads/seoul_bus_station.csv'
+        new_file_path = xlsx_file_path.replace('xlsx', 'csv')
         xlsx.to_csv(new_file_path)
 
         df = pd.read_csv(new_file_path)
