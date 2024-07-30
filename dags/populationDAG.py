@@ -2,6 +2,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.postgres.operators.postgres import PostgresOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
+from airflow.models.variable import Variable
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -52,14 +53,15 @@ CREATE TABLE IF NOT EXISTS raw_data.seoul_population (
 def extract(**context):
     logging.info("Extract started")
 
+    airflow_path = Variable.get('airflow_download_path')
+
     chrome_options = Options()
     chrome_options.add_experimental_option("detach", True)
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--headless")  # Headless 모드 설정
-    chrome_options.add_argument("--download.default_directory=/downloads")
     chrome_options.add_experimental_option("prefs", {
-        "download.default_directory": "/opt/airflow/downloads",
+        "download.default_directory": airflow_path,
         "download.prompt_for_download": False,
         "download.directory_upgrade": True,
         "safebrowsing.enabled": True
@@ -97,18 +99,17 @@ def extract(**context):
     download_file_name = f"등록인구(월별)_{year}0{month}*"
     data_file_name = f"seoul_population_{year}0{month-1}"
 
-    download_dir = '/opt/airflow/downloads'
-    files = glob.glob(os.path.join(download_dir, download_file_name))
+    files = glob.glob(os.path.join(airflow_path, download_file_name))
     if files:
         latest_file = max(files, key=os.path.getctime)
-        new_name = os.path.join(download_dir, data_file_name)
+        new_name = os.path.join(airflow_path, data_file_name)
         os.rename(latest_file, new_name)
         logging.info(f"File renamed to: {new_name}")
     else:
         logging.info("No files found for renaming")
 
     
-    file_path = f'/opt/airflow/downloads/{data_file_name}'
+    file_path = f'{airflow_path}/{data_file_name}'
     
     file = Path(file_path)
     if file.is_file():
@@ -118,15 +119,13 @@ def extract(**context):
 
     driver.quit() 
     logging.info("Extract done")
-    return data_file_name
+    return file_path
 
 # 다운받은 CSV 파일 변환하는 함수
 def transform(**context):
     logging.info("transform started")
-    global csv_file_name, csv_file_path
-    csv_file_name = context['ti'].xcom_pull(task_ids="population_extract")
+    csv_file_path = context['ti'].xcom_pull(task_ids="population_extract")
     try:
-        csv_file_path = f'downloads/{csv_file_name}'
         df = pd.read_csv(csv_file_path)
         
         logging.info("DataFrame loaded successfully")
@@ -139,17 +138,17 @@ def transform(**context):
         df = df.drop('합계', axis=1)
         df.to_csv(csv_file_path, index=False, header=False)
         logging.info("transform finished")
-        return csv_file_name
+        return csv_file_path
         
     except Exception as e:
         print(f"An error occurred: {e}")
 
 # 변환한 CSV 파일 S3에 적재하는 함수
-def upload_to_S3(name, **kwargs):
+def upload_to_S3(path, **kwargs):
     bucket_name = 'team-ariel-2-data'
     hook = S3Hook(aws_conn_id='S3_conn')
     hook.load_file(
-        filename=f'downloads/{name}',
+        filename=path,
         key=f'data/{name}.csv', 
         bucket_name=bucket_name, 
         replace=True
@@ -199,7 +198,7 @@ populationDataTransform = PythonOperator(
 upload_data_to_S3 = PythonOperator(
     task_id = "upload_to_S3",
     python_callable=upload_to_S3,
-    op_kwargs={'name': '{{ task_instance.xcom_pull(task_ids="population_transform") }}'},
+    op_kwargs={'path': '{{ task_instance.xcom_pull(task_ids="population_transform") }}'},
     dag=dag
 )
 
@@ -207,7 +206,7 @@ upload_data_to_S3 = PythonOperator(
 load_data_to_redshift = PythonOperator(
     task_id = "load_to_redshift",
     python_callable=load_to_redshift,
-    op_kwargs={'name': '{{ task_instance.xcom_pull(task_ids="upload_to_S3") }}'},
+    op_kwargs={'path': '{{ task_instance.xcom_pull(task_ids="upload_to_S3") }}'},
     dag=dag
 )
 
