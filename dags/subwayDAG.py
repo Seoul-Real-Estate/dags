@@ -41,11 +41,11 @@ def extract(**context):
     else:
         logging.info("Extract Error : " + response.status_code)
     logging.info("Extract done")
-    return data_list
+    context['ti'].xcom_push(key='extracted_data', value=data_list)
 
 # 추출한 지하철 데이터 변환
 def transform(**context):
-    extract_data = context['ti'].xcom_pull(task_ids='subwayStation_extract')
+    extract_data = context['ti'].xcom_pull(task_ids='subway_extract')
     logging.info("got extract return value")
     logging.info("Transform started")
     trans_list = []
