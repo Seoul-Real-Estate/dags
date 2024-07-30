@@ -2,6 +2,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.postgres.operators.postgres import PostgresOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
+from airflow.models.variable import Variable
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -47,14 +48,13 @@ CREATE TABLE IF NOT EXISTS raw_data.seoul_bus_station (
 def extract(**context):
     logging.info("Extract started")
 
-    airflow_path = "/home/ubuntu/airflow/downloads"
+    airflow_path = Variable.get("airflow_download_path")
 
     chrome_options = Options()
     chrome_options.add_experimental_option("detach", True)
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--headless")  # Headless 모드 설정
-    chrome_options.add_argument("--download.default_directory=/downloads")
     chrome_options.add_experimental_option("prefs", {
         "download.default_directory": airflow_path,
         "download.prompt_for_download": False,
