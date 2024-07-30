@@ -43,7 +43,7 @@ def extract(**context):
     chrome_options.add_argument("--headless")  # Headless 모드 설정
     chrome_options.add_argument("--download.default_directory=/downloads")
     chrome_options.add_experimental_option("prefs", {
-        "download.default_directory": "../downloads",
+        "download.default_directory": "/home/ubuntu/airflow/downloads",
         "download.prompt_for_download": False,
         "download.directory_upgrade": True,
         "safebrowsing.enabled": True
@@ -60,7 +60,7 @@ def extract(**context):
     
     time.sleep(10)
 
-    download_dir = '../downloads'
+    download_dir = '/home/ubuntu/airflow/downloads'
     files = glob.glob(os.path.join(download_dir, "서울시 시내버스 정류소 현황_*"))
     if files:
         latest_file = max(files, key=os.path.getctime)
@@ -73,7 +73,7 @@ def extract(**context):
 
     file_name = 'seoul_bus_station.xlsx'
     
-    file_path = f'../downloads/{file_name}'
+    file_path = f'/home/ubuntu/airflow/downloads/{file_name}'
     
     file = Path(file_path)
     if file.is_file():
