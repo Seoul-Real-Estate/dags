@@ -45,7 +45,7 @@ def extract(**context):
 
 # 추출한 지하철 데이터 변환
 def transform(**context):
-    extract_data = context['ti'].xcom_pull(task_ids='subway_extract')
+    extract_data = context['ti'].xcom_pull(key='extracted_data')
     logging.info("got extract return value")
     logging.info("Transform started")
     trans_list = []
@@ -66,7 +66,7 @@ def transform(**context):
 def load(**context):
     logging.info("Load start")
     pg_hook = PostgresHook(postgres_conn_id="rs_conn")
-    trans_data = context['ti'].xcom_pull(task_ids='subwayStation_transform')
+    trans_data = context['ti'].xcom_pull(task_ids='subway_transform')
     for data in trans_data:
         id = data['station_id']
         name = data['station_nm']
