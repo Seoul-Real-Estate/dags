@@ -164,8 +164,8 @@ def get_create_table_sqls(schema):
                 roofTopYN               VARCHAR(255),
                 created_at              TIMESTAMP,
                 updated_at              TIMESTAMP,
-                FOREIGN KEY (complexNo) REFERENCES naver_complex(complexNo),
-                FOREIGN KEY (realtorId) REFERENCES naver_realtor(realtorId)
+                FOREIGN KEY (complexNo) REFERENCES {schema}.naver_complex(complexNo),
+                FOREIGN KEY (realtorId) REFERENCES {schema}.naver_realtor(realtorId)
             );
         """,
         'dabang_real_estate': f"""
@@ -209,15 +209,15 @@ def get_create_table_sqls(schema):
                 contact_number              VARCHAR(255),
                 created_at                  TIMESTAMP,
                 updated_at                  TIMESTAMP,
-                FOREIGN KEY(dabang_complex_id) REFERENCES dabang_complex(complex_id),
-                FOREIGN KEY(dabang_realtor_id) REFERENCES dabang_realtor(id)
+                FOREIGN KEY(dabang_complex_id) REFERENCES {schema}.dabang_complex(complex_id),
+                FOREIGN KEY(dabang_realtor_id) REFERENCES {schema}.dabang_realtor(id)
             );
         """,
         'real_estate': f"""
             CREATE TABLE IF NOT EXISTS {schema}.real_estate (
                 id                      VARCHAR(255) PRIMARY KEY,
                 realtor_id              VARCHAR(255),
-                complex_id    VARCHAR(255),
+                complex_id              VARCHAR(255),
                 room_type               VARCHAR(255),
                 trade_type              VARCHAR(255),
                 room_floor               INTEGER,
@@ -246,8 +246,8 @@ def get_create_table_sqls(schema):
                 platform                VARCHAR(255),
                 created_at              TIMESTAMP,
                 updated_at              TIMESTAMP,
-                FOREIGN KEY(realtor_id) REFERENCES realtor(id),
-                FOREIGN KEY(complex_id) REFERENCES complex(id)
+                FOREIGN KEY(realtor_id) REFERENCES {schema}.realtor(id),
+                FOREIGN KEY(complex_id) REFERENCES {schema}.complex(id)
             );
         """
     }
@@ -275,7 +275,7 @@ def create_table(create_table_sql):
     tags=['none', 'create table', 'real_estate']
 )
 def create_tables_real_estate():
-    schema = 'wjstkddyd420'
+    schema = 'raw_data'
     for table_name, create_sql in get_create_table_sqls(schema).items():
         create_task = create_table.override(task_id=f'create_{table_name}_table')(create_table_sql=create_sql)
 
