@@ -2,6 +2,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.postgres.operators.postgres import PostgresOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
+from airflow.models.variable import Variable
 from datetime import datetime
 import requests
 import logging
@@ -85,7 +86,9 @@ def extract(**context):
     
     df = pd.DataFrame(df_list)
 
-    file_path = './data/seoul_hospital.csv'
+    airflow_path = Variable.get('airflow_download_path')
+
+    file_path = f'{airflow_path}/seoul_hospital.csv'
     df.to_csv(file_path, index=False)
     logging.info("Extract done")
     return file_path

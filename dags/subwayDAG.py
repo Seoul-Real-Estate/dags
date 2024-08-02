@@ -14,8 +14,7 @@ kst = pendulum.timezone("Asia/Seoul")
 dag = DAG(
     dag_id='subwayDAG',
     start_date=datetime(2024, 7, 16, tzinfo=kst),
-    schedule=None,
-    # schedule_interval='10 0 * * *',
+    schedule_interval='0 0 * * 1',
     catchup=False
 )
 
@@ -41,11 +40,11 @@ def extract(**context):
     else:
         logging.info("Extract Error : " + response.status_code)
     logging.info("Extract done")
-    return data_list
+    context['ti'].xcom_push(key='extracted_data', value=data_list)
 
 # 추출한 지하철 데이터 변환
 def transform(**context):
-    extract_data = context['ti'].xcom_pull(task_ids='subwayStation_extract')
+    extract_data = context['ti'].xcom_pull(key='extracted_data')
     logging.info("got extract return value")
     logging.info("Transform started")
     trans_list = []
@@ -66,7 +65,7 @@ def transform(**context):
 def load(**context):
     logging.info("Load start")
     pg_hook = PostgresHook(postgres_conn_id="rs_conn")
-    trans_data = context['ti'].xcom_pull(task_ids='subwayStation_transform')
+    trans_data = context['ti'].xcom_pull(task_ids='subway_transform')
     for data in trans_data:
         id = data['station_id']
         name = data['station_nm']
