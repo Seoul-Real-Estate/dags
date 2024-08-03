@@ -397,9 +397,9 @@ def naver_apt_real_estate():
         # 숫자 변환 시 에러가 발생하는 값은 NaN으로 대체
         df[column_name] = pd.to_numeric(df[column_name], errors='coerce')
 
-    # 8. 새로운 아파트 매물 redshift 적재
-    @task
-    def load_to_redshift_apt_real_estate():
+    # 8. 새로운 아파트 매물 s3 업로드
+    @task.short_circuit
+    def upload_to_s3_new_real_estate():
         # redshift 데이터 조회
         cur = get_redshift_connection()
         cur.execute(f'SELECT * FROM {schema}.naver_real_estate;')
@@ -412,9 +412,30 @@ def naver_apt_real_estate():
         s3_df = pd.read_csv(
             s3_hook.get_key(key='data/' + today_real_estate_file_name, bucket_name=bucket_name).get()['Body'])
 
+        new_columns = {
+            'address': None,
+            'roadAddress': None,
+            'etcAddress': None,
+            'roomFacilityCodes': None,
+            'roomFacilities': None,
+            'buildingFacilityCodes': None,
+            'buildingFacilities': None,
+            'roofTopYN': None
+        }
+
+        for column, value in new_columns.items():
+            s3_df[column] = value
+
         # 정수형 필드에 문자열이 올 경우 NaN 변환
         clean_numeric_column(s3_df, 'roomCount')
         clean_numeric_column(s3_df, 'bathroomCount')
+        clean_numeric_column(s3_df, 'dealPrice')
+        clean_numeric_column(s3_df, 'warrantPrice')
+        clean_numeric_column(s3_df, 'rentPrice')
+
+        s3_df['parkingCount'] = s3_df['parkingCount'].fillna(0).astype(int)
+        s3_df['roomCount'] = s3_df['roomCount'].fillna(0).astype(int)
+        s3_df['bathroomCount'] = s3_df['bathroomCount'].fillna(0).astype(int)
 
         # redshift와 S3 비교해서 새로운 데이터만 추출
         if redshift_df.empty:
@@ -424,14 +445,19 @@ def naver_apt_real_estate():
 
         if new_df.empty:
             logging.info("No new real_estate data")
-            return
+            return False
 
         # 새로운 데이터 S3 적재
         today = datetime.now().strftime('%Y-%m-%d')
         today_new_real_estate_file_name = f'{today}_new_naver_real_estate.csv'
         upload_to_s3(bucket_name, today_new_real_estate_file_name, new_df)
+        return True
 
-        # 새로운 데이터 redshift 적재
+    # 새로운 매물 redshift 적재
+    @task
+    def load_to_redshift_real_estate():
+        today = datetime.now().strftime('%Y-%m-%d')
+        today_new_real_estate_file_name = f'{today}_new_naver_real_estate.csv'
         cur = get_redshift_connection()
         cur.execute(f"""
                     COPY {schema}.naver_real_estate
@@ -442,9 +468,9 @@ def naver_apt_real_estate():
         cur.close()
         logging.info(f'Data successfully loaded into {schema}.naver_real_estate')
 
-    # 새로운 공인중개사 redshift 적재
-    @task
-    def load_to_redshift_realtor():
+    # 새로운 공인중개사 s3 업로드
+    @task.short_circuit
+    def upload_to_s3_new_realtor():
         # redshift 데이터 조회
         cur = get_redshift_connection()
         cur.execute(f'SELECT * FROM {schema}.naver_realtor;')
@@ -456,6 +482,9 @@ def naver_apt_real_estate():
         today_realtor_file_name = f'{today}_naver_realtor.csv'
         s3_df = pd.read_csv(
             s3_hook.get_key(key='data/' + today_realtor_file_name, bucket_name=bucket_name).get()['Body'])
+        s3_df['dealCount'] = s3_df['dealCount'].fillna(0).astype(int)
+        s3_df['leaseCount'] = s3_df['leaseCount'].fillna(0).astype(int)
+        s3_df['rentCount'] = s3_df['rentCount'].fillna(0).astype(int)
 
         # redshift와 S3 비교해서 새로운 데이터만 추출
         if redshift_df.empty:
@@ -465,21 +494,26 @@ def naver_apt_real_estate():
 
         if new_df.empty:
             logging.info("No new realtor data")
-            return
+            return False
 
         # 새로운 데이터 S3 적재
         today = datetime.now().strftime('%Y-%m-%d')
         today_new_realtor_file_name = f'{today}_new_naver_realtor.csv'
         upload_to_s3(bucket_name, today_new_realtor_file_name, new_df)
+        return True
 
-        # 새로운 데이터 redshift 적재
+    # 새로운 공인중개사 redshift 적재
+    @task
+    def load_to_redshift_realtor():
+        today = datetime.now().strftime('%Y-%m-%d')
+        today_new_realtor_file_name = f'{today}_new_naver_realtor.csv'
         cur = get_redshift_connection()
         cur.execute(f"""
-                        COPY {schema}.naver_real_estate
-                        FROM 's3://team-ariel-2-data/data/{today_new_realtor_file_name}'
-                        IAM_ROLE '{iam_role}'
-                        CSV
-                        IGNOREHEADER 1;""")
+                    COPY {schema}.naver_realtor
+                    FROM 's3://team-ariel-2-data/data/{today_new_realtor_file_name}'
+                    IAM_ROLE '{iam_role}'
+                    CSV
+                    IGNOREHEADER 1;""")
         cur.close()
         logging.info(f'Data successfully loaded into {schema}.naver_realtor')
 
@@ -490,7 +524,9 @@ def naver_apt_real_estate():
     load_to_redshift_complex_task = load_to_redshift_complex()
     process_apt_real_estate = process_apt_real_estate()
     process_apt_real_estate_detail = process_apt_real_estate_detail()
-    load_to_redshift_apt_real_estate = load_to_redshift_apt_real_estate()
+    upload_to_s3_new_real_estate = upload_to_s3_new_real_estate()
+    load_to_redshift_real_estate = load_to_redshift_real_estate()
+    upload_to_s3_new_realtor = upload_to_s3_new_realtor()
     load_to_redshift_realtor = load_to_redshift_realtor()
     skip_task = skip_task()
 
@@ -498,8 +534,8 @@ def naver_apt_real_estate():
     is_check_apt_complex >> [process_apt_complex_detail_task, skip_task]
     process_apt_complex_detail_task >> load_to_redshift_complex_task >> process_apt_real_estate
     skip_task >> process_apt_real_estate
-    process_apt_real_estate >> process_apt_real_estate_detail >> load_to_redshift_apt_real_estate
-    process_apt_real_estate_detail >> load_to_redshift_realtor
+    process_apt_real_estate >> process_apt_real_estate_detail >> upload_to_s3_new_real_estate >> load_to_redshift_real_estate
+    process_apt_real_estate_detail >> upload_to_s3_new_realtor >> load_to_redshift_realtor
 
 
 naver_apt_real_estate = naver_apt_real_estate()
