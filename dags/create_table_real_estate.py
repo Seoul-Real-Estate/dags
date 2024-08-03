@@ -33,7 +33,7 @@ def get_create_table_sqls(schema):
                 constructionCompanyName VARCHAR(255),
                 heatMethodTypeCode      VARCHAR(255),
                 heatFuelTypeCode        VARCHAR(255),
-                pyoengNames             VARCHAR(1000),
+                pyoengNames             VARCHAR(5000),
                 managementOfficeTelNo    VARCHAR(255),
                 roadZipcode             VARCHAR(255),
                 road_address            VARCHAR(255),
