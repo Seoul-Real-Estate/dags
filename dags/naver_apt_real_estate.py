@@ -442,7 +442,7 @@ def naver_apt_real_estate():
         if redshift_df.empty:
             new_df = s3_df
         else:
-            new_df = s3_df[~s3_df['articleNo'].isin(redshift_df['articleNo'])]
+            new_df = s3_df[~s3_df['articleNo'].isin(redshift_df['articleno'])]
 
         if new_df.empty:
             logging.info("No new real_estate data")
