@@ -393,6 +393,10 @@ def naver_apt_real_estate():
         today_realtor_file_name = f'{today}_naver_realtor.csv'
         upload_to_s3(bucket_name, today_realtor_file_name, realtor_df)
 
+    def clean_numeric_column(df, column_name):
+        # 숫자 변환 시 에러가 발생하는 값은 NaN으로 대체
+        df[column_name] = pd.to_numeric(df[column_name], errors='coerce')
+
     # 8. 새로운 아파트 매물 redshift 적재
     @task
     def load_to_redshift_apt_real_estate():
@@ -408,6 +412,10 @@ def naver_apt_real_estate():
         s3_df = pd.read_csv(
             s3_hook.get_key(key='data/' + today_real_estate_file_name, bucket_name=bucket_name).get()['Body'])
 
+        # 정수형 필드에 문자열이 올 경우 NaN 변환
+        clean_numeric_column(s3_df, 'roomCount')
+        clean_numeric_column(s3_df, 'bathroomCount')
+
         # redshift와 S3 비교해서 새로운 데이터만 추출
         if redshift_df.empty:
             new_df = s3_df
@@ -418,12 +426,21 @@ def naver_apt_real_estate():
             logging.info("No new real_estate data")
             return
 
-        # redshift 적재
-        redshift_hook = RedshiftSQLHook(redshift_conn_id='redshift_dev_db')
-        engine = redshift_hook.get_sqlalchemy_engine()
-        new_df.to_sql('naver_real_estate', engine, schema=schema, if_exists='append', index=False)
-        logging.info(f'Data successfully loaded into {schema}.naver_real_estate')
+        # 새로운 데이터 S3 적재
+        today = datetime.now().strftime('%Y-%m-%d')
+        today_new_real_estate_file_name = f'{today}_new_naver_real_estate.csv'
+        upload_to_s3(bucket_name, today_new_real_estate_file_name, new_df)
+
+        # 새로운 데이터 redshift 적재
+        cur = get_redshift_connection()
+        cur.execute(f"""
+                    COPY {schema}.naver_real_estate
+                    FROM 's3://team-ariel-2-data/data/{today_new_real_estate_file_name}'
+                    IAM_ROLE '{iam_role}'
+                    CSV
+                    IGNOREHEADER 1;""")
         cur.close()
+        logging.info(f'Data successfully loaded into {schema}.naver_real_estate')
 
     # 새로운 공인중개사 redshift 적재
     @task
@@ -444,18 +461,27 @@ def naver_apt_real_estate():
         if redshift_df.empty:
             new_df = s3_df
         else:
-            new_df = s3_df[~s3_df['realtorId'].isin(redshift_df['realtorId'])]
+            new_df = s3_df[~s3_df['realtorId'].isin(redshift_df['realtorid'])]
 
         if new_df.empty:
             logging.info("No new realtor data")
             return
 
-        # redshift 적재
-        redshift_hook = RedshiftSQLHook(redshift_conn_id='redshift_dev_db')
-        engine = redshift_hook.get_sqlalchemy_engine()
-        new_df.to_sql('naver_realtor', engine, schema=schema, if_exists='append', index=False)
-        logging.info(f'Data successfully loaded into {schema}.naver_realtor')
+        # 새로운 데이터 S3 적재
+        today = datetime.now().strftime('%Y-%m-%d')
+        today_new_realtor_file_name = f'{today}_new_naver_realtor.csv'
+        upload_to_s3(bucket_name, today_new_realtor_file_name, new_df)
+
+        # 새로운 데이터 redshift 적재
+        cur = get_redshift_connection()
+        cur.execute(f"""
+                        COPY {schema}.naver_real_estate
+                        FROM 's3://team-ariel-2-data/data/{today_new_realtor_file_name}'
+                        IAM_ROLE '{iam_role}'
+                        CSV
+                        IGNOREHEADER 1;""")
         cur.close()
+        logging.info(f'Data successfully loaded into {schema}.naver_realtor')
 
     process_si_gun_gu_task = process_si_gun_gu()
     process_eup_myeon_dong_task = process_eup_myeon_dong()
