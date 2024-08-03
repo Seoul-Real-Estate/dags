@@ -145,6 +145,11 @@ def get_real_estate_detail_info(base_headers, articleNo):
     return requests.get(url, params=params, headers=headers).json()
 
 
+# 숫자 변환 시 에러가 발생하는 값은 NaN으로 대체
+def clean_numeric_column(df, column_name):
+    df[column_name] = pd.to_numeric(df[column_name], errors='coerce')
+
+
 @dag(
     default_args=default_args,
     description="네이버부동산 아파트/오피스텔 데이터 수집 및 적재 DAG",
@@ -392,10 +397,6 @@ def naver_apt_real_estate():
         # 공인중개사 S3 적재
         today_realtor_file_name = f'{today}_naver_realtor.csv'
         upload_to_s3(bucket_name, today_realtor_file_name, realtor_df)
-
-    def clean_numeric_column(df, column_name):
-        # 숫자 변환 시 에러가 발생하는 값은 NaN으로 대체
-        df[column_name] = pd.to_numeric(df[column_name], errors='coerce')
 
     # 8. 새로운 아파트 매물 s3 업로드
     @task.short_circuit
