@@ -48,7 +48,7 @@ def get_list_total_count():
 
 # 데이터 수집 task
 @task
-def process_data(unit_value):
+def process_data():
     api_key = Variable.get('seoul_api_key')
     start_index = 1 
     unit_value = 1000  # 한 번에 1000건까지 가능
