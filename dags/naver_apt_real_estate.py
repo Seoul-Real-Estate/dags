@@ -157,6 +157,11 @@ def get_csv_from_s3(bucket_name, file_name):
     return pd.read_csv(s3_hook.get_key(key=key, bucket_name=bucket_name).get()['Body'])
 
 
+def get_today_file_name(file_name):
+    today = datetime.now().strftime('%Y-%m-%d')
+    return f'{today}_{file_name}'
+
+
 @dag(
     default_args=default_args,
     description="네이버부동산 아파트/오피스텔 데이터 수집 및 적재 DAG",
@@ -172,6 +177,8 @@ def naver_apt_real_estate():
     si_gun_gu_file_name = 'si_gun_gu.csv'
     eup_myeon_dong_file_name = 'eup_myeon_dong.csv'
     complex_file_name = 'naver_complex.csv'
+    real_estate_file_name = 'naver_real_estate.csv'
+    realtor_file_name = 'naver_realtor.csv'
     base_url = "https://new.land.naver.com/api/regions/list?cortarNo="
     base_headers = {
         "Accept-Encoding": "gzip",
@@ -232,15 +239,14 @@ def naver_apt_real_estate():
             return 'skip_task'
 
         # 새로운 아파트 단지가 있을 때
-        today = datetime.now().strftime("%Y-%m-%d")
-        upload_to_s3(bucket_name, f'{today}_{complex_file_name}', new_complex_df)
+        today_complex_file_name = get_today_file_name(complex_file_name)
+        upload_to_s3(bucket_name, today_complex_file_name, new_complex_df)
         return 'process_apt_complex_detail'
 
     # 4. 단지마다 아파트 단지 상세정보 검색
     @task
     def process_apt_complex_detail():
-        today = datetime.now().strftime('%Y-%m-%d')
-        today_complex_file_name = f'{today}_{complex_file_name}'
+        today_complex_file_name = get_today_file_name(complex_file_name)
         complex_df = get_csv_from_s3(bucket_name, today_complex_file_name)
 
         # 상세 정보에서 필요한 데이터 key
@@ -285,8 +291,7 @@ def naver_apt_real_estate():
     # 5. 아파트 단지 redshift 적재
     @task
     def load_to_redshift_complex():
-        today = datetime.now().strftime('%Y-%m-%d')
-        today_complex_file_name = f'{today}_{complex_file_name}'
+        today_complex_file_name = get_today_file_name(complex_file_name)
         cur = get_redshift_connection()
         cur.execute(f"""
             COPY {schema}.naver_complex
@@ -306,6 +311,7 @@ def naver_apt_real_estate():
         # 아파트 단지번호 조회
         complex_numbers = get_complex_primary_keys(schema)
         real_estate_df_list = []
+
         for complexNo in complex_numbers:
             real_estate_df = get_apt_real_estate_info(base_headers, complexNo)
             real_estate_df['complexNo'] = complexNo
@@ -314,7 +320,8 @@ def naver_apt_real_estate():
         real_estate_df = pd.concat(real_estate_df_list, ignore_index=True)
         desired_columns = ['articleNo', 'articleName', 'realEstateTypeName', 'tradeTypeName', 'floorInfo',
                            'dealOrWarrantPrc', 'rentPrc', 'area1', 'area2', 'direction', 'articleConfirmYmd',
-                           'articleFeatureDesc', 'tagList', 'buildingName', 'latitude', 'longitude', 'realtorId']
+                           'articleFeatureDesc', 'tagList', 'buildingName', 'latitude', 'longitude', 'realtorId',
+                           'complexNo']
         real_estate_df = real_estate_df[desired_columns]
 
         # loc를 사용하여 rentPrc 열의 NaN 값을 0으로 대체
@@ -329,8 +336,8 @@ def naver_apt_real_estate():
             return False
 
         # 새로운 매물 있으면 다운스트림 테스크 실행
-        today = datetime.now().strftime("%Y-%m-%d")
-        upload_to_s3(bucket_name, f'{today}_naver_real_estate.csv', new_real_estate_df)
+        today_real_estate_file_name = get_today_file_name(real_estate_file_name)
+        upload_to_s3(bucket_name, today_real_estate_file_name, new_real_estate_df)
         return True
 
     # 7. 매물마다 상세정보 검색
@@ -340,8 +347,7 @@ def naver_apt_real_estate():
         realtor_infos = []
 
         # 아파트 매물 S3 조회
-        today = datetime.now().strftime('%Y-%m-%d')
-        today_real_estate_file_name = f'{today}_naver_real_estate.csv'
+        today_real_estate_file_name = get_today_file_name(real_estate_file_name)
         real_estate_df = get_csv_from_s3(bucket_name, today_real_estate_file_name)
 
         for idx, row in real_estate_df.iterrows():
@@ -370,8 +376,6 @@ def naver_apt_real_estate():
             real_estate_df.loc[idx, 'hoNm'] = landPrice.get('hoNm')
             real_estate_df.loc[idx, 'correspondingFloorCount'] = articleFloor.get('correspondingFloorCount')
             real_estate_df.loc[idx, 'totalFloorCount'] = articleFloor.get('totalFloorCount')
-            real_estate_df.loc[idx, 'created_at'] = datetime.now()
-            real_estate_df.loc[idx, 'updated_at'] = datetime.now()
 
             # 공인중개사 값 추가
             realtor_infos.append(articleRealtor)
@@ -384,27 +388,62 @@ def naver_apt_real_estate():
         realtor_df = realtor_df[desired_columns]
         realtor_df['created_at'] = datetime.now()
         realtor_df['updated_at'] = datetime.now()
-        # realtorId가 null이면 삭제
         realtor_df = realtor_df[realtor_df['realtorId'].notna()]
 
         # 아파트 매물 S3 적재
-        today = datetime.now().strftime('%Y-%m-%d')
-        today_real_estate_file_name = f'{today}_naver_real_estate.csv'
+        today_real_estate_file_name = get_today_file_name(real_estate_file_name)
         upload_to_s3(bucket_name, today_real_estate_file_name, real_estate_df)
 
         # 공인중개사 S3 적재
-        today_realtor_file_name = f'{today}_naver_realtor.csv'
+        today_realtor_file_name = get_today_file_name(realtor_file_name)
         upload_to_s3(bucket_name, today_realtor_file_name, realtor_df)
+
+    # 매물 타입 및 컬럼 전처리
+    @task
+    def process_apt_real_estate_transform():
+        today_real_estate_file_name = get_today_file_name(real_estate_file_name)
+        real_estate_df = get_csv_from_s3(bucket_name, today_real_estate_file_name)
+
+        # 정수형 필드에 문자열이 올 경우 NaN 변환
+        clean_numeric_column(real_estate_df, 'roomCount')
+        clean_numeric_column(real_estate_df, 'bathroomCount')
+        clean_numeric_column(real_estate_df, 'dealPrice')
+        clean_numeric_column(real_estate_df, 'warrantPrice')
+        clean_numeric_column(real_estate_df, 'rentPrice')
+
+        real_estate_df['area1'] = real_estate_df['area1'].fillna(0).astype(int)
+        real_estate_df['area2'] = real_estate_df['area2'].fillna(0).astype(int)
+        real_estate_df['parkingCount'] = real_estate_df['parkingCount'].fillna(0).astype(int)
+        real_estate_df['roomCount'] = real_estate_df['roomCount'].fillna(0).astype(int)
+        real_estate_df['bathroomCount'] = real_estate_df['bathroomCount'].fillna(0).astype(int)
+        real_estate_df['created_at'] = datetime.now()
+        real_estate_df['updated_at'] = datetime.now()
+
+        new_columns = {
+            'address': None,
+            'roadAddress': None,
+            'etcAddress': None,
+            'roomFacilityCodes': None,
+            'roomFacilities': None,
+            'buildingFacilityCodes': None,
+            'buildingFacilities': None,
+            'roofTopYN': None
+        }
+
+        for column, value in new_columns.items():
+            real_estate_df[column] = value
+
+        upload_to_s3(bucket_name, today_real_estate_file_name, real_estate_df)
 
     # 새로운 매물 redshift 적재
     @task
     def load_to_redshift_real_estate():
         today = datetime.now().strftime('%Y-%m-%d')
-        today_new_real_estate_file_name = f'{today}_naver_real_estate.csv'
+        today_real_estate_file_name = get_today_file_name(real_estate_file_name)
         cur = get_redshift_connection()
         cur.execute(f"""
                     COPY {schema}.naver_real_estate
-                    FROM 's3://team-ariel-2-data/data/{today_new_real_estate_file_name}'
+                    FROM 's3://team-ariel-2-data/data/{today_real_estate_file_name}'
                     IAM_ROLE '{iam_role}'
                     CSV
                     IGNOREHEADER 1;""")
@@ -419,10 +458,10 @@ def naver_apt_real_estate():
         cur.execute(f'SELECT * FROM {schema}.naver_realtor;')
         redshift_df = cur.fetch_dataframe()
 
-        # S3 데이터 조회d
-        today = datetime.now().strftime('%Y-%m-%d')
-        today_realtor_file_name = f'{today}_naver_realtor.csv'
+        # S3 데이터 조회
+        today_realtor_file_name = get_today_file_name(realtor_file_name)
         s3_df = get_csv_from_s3(bucket_name, today_realtor_file_name)
+
         s3_df['dealCount'] = s3_df['dealCount'].fillna(0).astype(int)
         s3_df['leaseCount'] = s3_df['leaseCount'].fillna(0).astype(int)
         s3_df['rentCount'] = s3_df['rentCount'].fillna(0).astype(int)
@@ -438,16 +477,14 @@ def naver_apt_real_estate():
             return False
 
         # 새로운 데이터 S3 적재
-        today = datetime.now().strftime('%Y-%m-%d')
-        today_new_realtor_file_name = f'{today}_new_naver_realtor.csv'
+        today_new_realtor_file_name = get_today_file_name('_new_' + realtor_file_name)
         upload_to_s3(bucket_name, today_new_realtor_file_name, new_df)
         return True
 
     # 새로운 공인중개사 redshift 적재
     @task
     def load_to_redshift_realtor():
-        today = datetime.now().strftime('%Y-%m-%d')
-        today_new_realtor_file_name = f'{today}_new_naver_realtor.csv'
+        today_new_realtor_file_name = get_today_file_name('_new_' + realtor_file_name)
         cur = get_redshift_connection()
         cur.execute(f"""
                     COPY {schema}.naver_realtor
@@ -465,6 +502,7 @@ def naver_apt_real_estate():
     load_to_redshift_complex_task = load_to_redshift_complex()
     process_apt_real_estate = process_apt_real_estate()
     process_apt_real_estate_detail = process_apt_real_estate_detail()
+    real_estate_transform = process_apt_real_estate_transform()
     load_to_redshift_real_estate = load_to_redshift_real_estate()
     upload_to_s3_new_realtor = upload_to_s3_new_realtor()
     load_to_redshift_realtor = load_to_redshift_realtor()
@@ -474,7 +512,7 @@ def naver_apt_real_estate():
     is_check_apt_complex >> [process_apt_complex_detail_task, skip_task]
     process_apt_complex_detail_task >> load_to_redshift_complex_task >> process_apt_real_estate
     skip_task >> process_apt_real_estate
-    process_apt_real_estate >> process_apt_real_estate_detail >> load_to_redshift_real_estate
+    process_apt_real_estate >> process_apt_real_estate_detail >> real_estate_transform >> load_to_redshift_real_estate
     process_apt_real_estate_detail >> upload_to_s3_new_realtor >> load_to_redshift_realtor
 
 
