@@ -86,7 +86,6 @@ class realestate:
         df["권리구분"] = " "
         df["토지면적"] = " "
         df = df[cols]
-        df.to_csv(f'apartment_trade_{self.trademonth}_{self.rundate}.csv', index=False)
         return df
 
     # 오피스텔 매매
@@ -142,7 +141,6 @@ class realestate:
         df["토지면적"] = " "
         df["등기일자"] = " "
         df = df[cols]
-        df.to_csv(f'officetel_trade_{self.trademonth}_{self.rundate}.csv', index=False)
         return df
 
     # 연립다세대 매매
@@ -202,7 +200,6 @@ class realestate:
         df["건물용도"] = "연립다세대"
         df["권리구분"] = " "
         df = df[cols]
-        df.to_csv(f'billa_trade_{self.trademonth}_{self.rundate}.csv', index=False)
         return df
 
     # 단독다가구 매매
@@ -257,7 +254,6 @@ class realestate:
         df["등기일자"] = " "
         
         df = df[cols]
-        df.to_csv(f'house_trade_{self.trademonth}_{self.rundate}.csv', index=False)
         return df
 
 
@@ -318,22 +314,14 @@ class realestate:
             except: floor = " "
             data.append([year, month, day, dong, name, area, uses, buildyear, addr, type, length, deposit, rent, before_deposit, before_rent, code, floor])
 
-['계약일', '자치구명', '법정동명', '주소', '건물명', '층', '전월세구분', '임대면적', '보증금', '임대료',
-            '계약기간', '신규갱신여부', '계약갱신권사용여부', '종전보증금', '종전임대료', '건축년도', '건물용도']
-['year', 'month', 'day', '법정동명', '건물명', '전용면적', '계약갱신권사용여부', '건축년도', '지번', '신규갱신여부'
-                    '계약기간', '보증금', '임대료', '종전보증금', '종전임대료', '지역코드', '층']
-
     def apartment_rent_preprocessing(self, df, cols):
         df["계약일"] = pd.to_datetime(df[["year", "month", "day"]])
         df["계약일"] = df["계약일"].dt.strftime("%Y%m%d")
         df["주소"] = "서울특별시 " + df["자치구명"] + " " + df["법정동명"] + " " + df["지번"]
-        df.loc[df["월세금액"] == "0", "전월세구분"] = "전세"
-        df.loc[df["월세금액"] != "0", "전월세구분"] = "월세"
+        df.loc[df["임대료"] == "0", "전월세구분"] = "전세"
+        df.loc[df["임대료"] != "0", "전월세구분"] = "월세"
         df["건물용도"] = "아파트"
-        df = df.rename(columns={'자치구': '자치구명', '법정동': '법정동명', '보증금액' : '보증금', '아파트' : '건물명', '전용면적':'임대면적', '계약구분':'신규갱신여부', 
-                                '월세금액':'임대료', '종전계약보증금':'종전보증금', '종전계약월세' : '종전임대료', '갱신요구권사용':'계약갱신권사용여부'})
         df = df[cols]
-        df.to_csv(f'apartment_rent_{self.trademonth}_{self.rundate}.csv', index=False)
         return df
 
     # 오피스텔 전월세
@@ -393,17 +381,13 @@ class realestate:
             data.append([year, month, day, dong, name, area, uses, buildyear, addr, type, length, deposit, rent, before_deposit, before_rent, code, floor])
 
     def officetel_rent_preprocessing(self, df, cols):
-        df = df.rename(columns={'년':'year', '월':'month', '일':'day'})
         df["계약일"] = pd.to_datetime(df[["year", "month", "day"]])
         df["계약일"] = df["계약일"].dt.strftime("%Y%m%d")
-        df["주소"] = "서울특별시 " + df["자치구"] + " " + df["법정동"] + " " + df["지번"]
-        df.loc[df["월세"] == "0", "전월세구분"] = "전세"
-        df.loc[df["월세"] != "0", "전월세구분"] = "월세"
+        df["주소"] = "서울특별시 " + df["자치구명"] + " " + df["법정동명"] + " " + df["지번"]
+        df.loc[df["임대료"] == "0", "전월세구분"] = "전세"
+        df.loc[df["임대료"] != "0", "전월세구분"] = "월세"
         df["건물용도"] = "오피스텔"
-        df = df.rename(columns={'자치구': '자치구명', '법정동': '법정동명', '단지' : '건물명', '전용면적':'임대면적', '계약구분':'신규갱신여부', 
-                                '월세':'임대료', '종전계약보증금':'종전보증금', '종전계약월세' : '종전임대료', '갱신요구권사용':'계약갱신권사용여부'})
         df = df[cols]
-        df.to_csv(f'officetel_rent_{self.trademonth}_{self.rundate}.csv', index=False)
         return df
 
     # 연립다세대 전월세
@@ -463,18 +447,13 @@ class realestate:
             data.append([year, month, day, dong, name, area, uses, buildyear, addr, type, length, deposit, rent, before_deposit, before_rent, code, floor])
 
     def billa_rent_preprocessing(self, df, cols):
-        df = df.rename(columns={'년':'year', '월':'month', '일':'day'})
         df["계약일"] = pd.to_datetime(df[["year", "month", "day"]])
         df["계약일"] = df["계약일"].dt.strftime("%Y%m%d")
-        df["주소"] = "서울특별시 " + df["자치구"] + " " + df["법정동"] + " " + df["지번"]
-        df.loc[df["월세금액"] == "0", "전월세구분"] = "전세"
-        df.loc[df["월세금액"] != "0", "전월세구분"] = "월세"
+        df["주소"] = "서울특별시 " + df["자치구명"] + " " + df["법정동명"] + " " + df["지번"]
+        df.loc[df["임대료"] == "0", "전월세구분"] = "전세"
+        df.loc[df["임대료"] != "0", "전월세구분"] = "월세"
         df["건물용도"] = "연립다세대"
-        df = df.rename(columns={'자치구': '자치구명', '법정동': '법정동명', '보증금액' : '보증금', '연립다세대' : '건물명', '전용면적':'임대면적', 
-                                '계약구분':'신규갱신여부', '월세금액':'임대료', '종전계약보증금':'종전보증금', '종전계약월세' : '종전임대료', 
-                                '갱신요구권사용':'계약갱신권사용여부'})
         df = df[cols]
-        df.to_csv(f'billa_rent_{self.trademonth}_{self.rundate}.csv', index=False)
         return df
 
     # 단독 다가구 전월세
@@ -525,26 +504,20 @@ class realestate:
             data.append([year, month, day, dong, area, uses, buildyear, type, length, deposit, rent, before_deposit, before_rent, code])
 
     def house_rent_preprocessing(self, df, cols):
-        df = df.rename(columns={'년':'year', '월':'month', '일':'day'})
         df["계약일"] = pd.to_datetime(df[["year", "month", "day"]])
         df["계약일"] = df["계약일"].dt.strftime("%Y%m%d")
-        df["주소"] = "서울특별시 " + df["자치구"] + " " + df["법정동"]
-        df.loc[df["월세금액"] == "0", "전월세구분"] = "전세"
-        df.loc[df["월세금액"] != "0", "전월세구분"] = "월세"
+        df["주소"] = "서울특별시 " + df["자치구명"] + " " + df["법정동명"]
+        df.loc[df["임대료"] == "0", "전월세구분"] = "전세"
+        df.loc[df["임대료"] != "0", "전월세구분"] = "월세"
         df["건물용도"] = "단독다가구"
-        df["건물명"] = " "
         df["층"] = " "
-
-        df = df.rename(columns={'자치구': '자치구명', '법정동': '법정동명', '계약면적':'임대면적', '계약구분':'신규갱신여부', '보증금액': '보증금', 
-                                '월세금액':'임대료', '종전계약보증금':'종전보증금', '종전계약월세' : '종전임대료', '갱신요구권사용':'계약갱신권사용여부'})
+        df["건물명"] = " "
         df = df[cols]
-        df.to_csv(f'house_rent_{self.trademonth}_{self.rundate}.csv', index=False)
         return df
 
     def get_lat_lng(self, add):
-        geolocator = Nominatim(user_agent='South Korea')  # Fix the typo here
+        geolocator = Nominatim(user_agent='South Korea')
         location = geolocator.geocode(add)
-
         if location:
             latitude = location.latitude
             longitude = location.longitude
@@ -553,37 +526,10 @@ class realestate:
             print('지번 주소 문제')
             print(add)
             return None, None
-        
-
 
     def compare_add_latlon(self, beforedf, afterdf, fincols):
-        # beforedf = pd.read_csv(beforefname, header=0)
-        # afterdf = pd.read_csv(afterfname, header=0)
         newdf = pd.merge(beforedf, afterdf, how='outer', indicator=True).query('_merge == "right_only"').drop(columns=['_merge'])
         coordinates = newdf["주소"].map(self.get_lat_lng)
         newdf[["위도", "경도"]] = pd.DataFrame(coordinates.tolist(), index = newdf.index)
         findf = newdf[fincols]
         return findf
-        
-
-key = "ZU3VKtV/cyVYqylBKhohTTGbwd5/hq0d4YDqWyHz9kODNZMljBKxidxikPm6J4uY7MTEGHQfT4+FuK/UEGmNkQ=="
-
-url = 'http://apis.data.go.kr/1613000/RTMSDataSvcOffiTrade/getRTMSDataSvcOffiTrade'
-officetel_trade_origin_cols = ['dealYear','dealMonth', 'dealDay', 'umdNm', 'offiNm', 'excluUseAr', 'dealAmount', 'buildYear',
-                        'jibun', 'sggCd', 'floor', 'cdealDay', 'dealingGbn']
-officetel_trade_cols = ['year', 'month', 'day', '법정동명', '건물명', '전용면적', '물건금액', '건축년도', '지번', '지역코드', '층', '취소일', '신고구분']
-
-rentcols_fin = ['계약일', '자치구명', '법정동명', '주소', '건물명', '층', '위도', '경도', '전월세구분', '임대면적', '보증금', '임대료',
-            '계약기간', '신규갱신여부', '계약갱신권사용여부', '종전보증금', '종전임대료', '건축년도', '건물용도']
-rentcols = ['계약일', '자치구명', '법정동명', '주소', '건물명', '층', '전월세구분', '임대면적', '보증금', '임대료',
-            '계약기간', '신규갱신여부', '계약갱신권사용여부', '종전보증금', '종전임대료', '건축년도', '건물용도']
-tradecols = ['계약일', '자치구명', '법정동명', '주소', '건물명', '층', '물건금액', '전용면적', '토지면적', '권리구분',
-            '취소일', '건축년도', '건물용도', '신고구분', '등기일자']
-tradecols_fin = ['계약일', '자치구명', '법정동명', '주소', '건물명', '층', '위도', '경도', '물건금액', '전용면적', '토지면적', '권리구분',
-            '취소일', '건축년도', '건물용도', '신고구분', '등기일자']
-
-re = realestate('20240731', '202408')
-result = re.data_extract(url, key, officetel_trade_origin_cols, officetel_trade_cols, re.officetel_trade_list)
-print(result)
-df = re.officetel_trade_preprocessing(result, tradecols)
-# re.compare_add_latlon('apartment_rent_202407_20240724.csv', 'apartment_rent_202407_20240725.csv', rentcols_fin)
