@@ -38,9 +38,9 @@ dag = DAG(
 CREATE_QUERY = """
 CREATE TABLE IF NOT EXISTS raw_data.seoul_bus_station (
     station_id VARCHAR(20),
-    gu VARCHAR(20),
     station_name VARCHAR(200),
-    total_route INT
+    latitude FLOAT,
+    longitude FLOAT
 );
 """
 
@@ -64,26 +64,26 @@ def extract(**context):
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 
-    driver.get("https://data.seoul.go.kr/dataList/OA-22187/F/1/datasetView.do")
+    driver.get("https://data.seoul.go.kr/dataList/OA-15067/S/1/datasetView.do")
 
     wait = WebDriverWait(driver, 20)
-    button_1 = wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="fileTr_1"]/td[6]/a')))
+    button_1 = wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="btnCsv"]')))
     button_1.click()
-    print("Button clicked successfully!")
+    print("Button 1 clicked successfully!")
 
     time.sleep(10)
 
-    files = glob.glob(os.path.join(airflow_path, "서울시 시내버스 정류소 현황_*"))
+    files = glob.glob(os.path.join(airflow_path, "서울시 버스정류소 위치정보.csv"))
     if files:
         latest_file = max(files, key=os.path.getctime)
-        new_name = os.path.join(airflow_path, "seoul_bus_station.xlsx")
+        new_name = os.path.join(airflow_path, "seoul_bus_station.csv")
         os.rename(latest_file, new_name)
         logging.info(f"File renamed to: {new_name}")
     else:
         logging.info("No files found for renaming")
 
 
-    file_name = 'seoul_bus_station.xlsx'
+    file_name = 'seoul_bus_station.csv'
     
     file_path = f'{airflow_path}/{file_name}'
     
@@ -101,21 +101,17 @@ def extract(**context):
 def transform(**context):
     logging.info("transform started")
     try:
-        xlsx_file_path = context['ti'].xcom_pull(task_ids="bus_extract")
-        xlsx = pd.read_excel(xlsx_file_path)
-
-        new_file_path = xlsx_file_path.replace('xlsx', 'csv')
-        xlsx.to_csv(new_file_path)
-
-        df = pd.read_csv(new_file_path)
+        file_path = context['ti'].xcom_pull(task_ids="bus_extract")
+        logging.info(file_path)
+        df = pd.read_csv(file_path, encoding='cp949')
         
-        df.columns = ['0', '구분', '자치구', 'ID', '정류소 명', '노선수', '6', '7', '8', '9', '10']
-        df = df.drop(['0', '구분','6', '7', '8', '9', '10'], axis=1)
-        df.to_csv(new_file_path, index=False, header=False)
+        df.columns = ['노드ID', '정류소번호', '정류소명', 'X', 'Y', '정류소타입']
+        df = df.drop(['노드ID', '정류소타입'], axis=1)
+        df.to_csv(file_path, index=False, header=False)
 
         logging.info("transform finished")   
-        logging.info("new file path : " + new_file_path)
-        return new_file_path   
+        logging.info("new file path : " + file_path)
+        return file_path   
       
     except Exception as e:
         logging.info(f"An error occurred: {e}")
