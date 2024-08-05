@@ -164,10 +164,10 @@ def get_today_file_name(file_name):
 @dag(
     default_args=default_args,
     description="네이버부동산 아파트/오피스텔 데이터 수집 및 적재 DAG",
-    schedule_interval='0 1 * * *',  # 매일 오전 10시 실행
-    start_date=datetime(2024, 8, 1),
+    schedule_interval='0 1 * * *',
+    start_date=datetime(2024, 8, 4),
     catchup=False,
-    tags=['daily', 'real_estate', 'naver']
+    tags=['daily', 'real_estate', 'naver', 'apt']
 )
 def naver_apt_real_estate():
     schema = 'raw_data'
