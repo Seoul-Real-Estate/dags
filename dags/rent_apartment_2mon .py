@@ -110,7 +110,7 @@ def apartment_rent_load(schema, table, upload_fname, credentials):
 with DAG(
     dag_id='rent_apartment_2mon',
     start_date=datetime(2024, 7, 24),
-    schedule='"@daily"',
+    schedule="@daily",
     max_active_runs=1,
     catchup=False, 
     default_args={
