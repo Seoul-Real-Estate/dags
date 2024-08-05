@@ -476,18 +476,18 @@ def naver_apt_real_estate():
             return False
 
         # 새로운 데이터 S3 적재
-        today_new_realtor_file_name = get_today_file_name('_new_' + realtor_file_name)
-        upload_to_s3(bucket_name, today_new_realtor_file_name, new_df)
+        today_realtor_file_name = get_today_file_name(realtor_file_name)
+        upload_to_s3(bucket_name, today_realtor_file_name, new_df)
         return True
 
     # 새로운 공인중개사 redshift 적재
     @task
     def load_to_redshift_realtor():
-        today_new_realtor_file_name = get_today_file_name('_new_' + realtor_file_name)
+        today_realtor_file_name = get_today_file_name(realtor_file_name)
         cur = get_redshift_connection()
         cur.execute(f"""
                     COPY {schema}.naver_realtor
-                    FROM 's3://team-ariel-2-data/data/{today_new_realtor_file_name}'
+                    FROM 's3://team-ariel-2-data/data/{today_realtor_file_name}'
                     IAM_ROLE '{iam_role}'
                     CSV
                     IGNOREHEADER 1;""")
