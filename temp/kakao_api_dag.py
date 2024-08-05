@@ -22,7 +22,7 @@ dag = DAG(
     catchup=False
 )
 
-# infra_test 테이블 생성 쿼리
+# seoul_subway 테이블 생성 쿼리
 CREATE_QUERY = """
 CREATE TABLE IF NOT EXISTS analytics.infra_test (
     x FLOAT,
@@ -228,14 +228,27 @@ CREATE TABLE IF NOT EXISTS analytics.infra_test (
 );
 """
 
-# 매물의 좌표를 구하는 함수
-# 지금은 좌표를 직접 넣었지만 나중에 Redshift에 적재되어있는 매물 테이블에서 좌표 가져오도록 수정할 예정
 def getAddress(**context):
    arr = [['127.065915414443', '37.4996157705058'], ['127.011582043737', '37.5078602234885'], ['127.044671518265', '37.5392578661678']]
    context["ti"].xcom_push(key="address", value=arr)
 
-# kakao API에서 인프라 데이터를 추출하는 함수
-def extract(**context):
+def bus_extract(**context):
+   address_list = context["ti"].xcom_pull(key="address")
+   extracted_data = []
+   for a in address_list:
+      url = 'https://api.odsay.com/v1/api/pointBusStation?'
+      params = {
+            'apiKey': 'Jr2EJ129r3z2s2BjjD9SLbm+JMvyBdBFRbh9OtoaXHA',
+            'lang' : '0',
+            'x' : f'{a[0]}',
+            'y' : f'{a[1]}',
+            'radius' : '500',
+        }
+      response = requests.get(url, params=params)
+      extracted_data.append(response.text)
+   context["ti"].xcom_push(key="bus_extracted_data", value=extracted_data)
+
+def infra_extract(**context):
    address_list = context["ti"].xcom_pull(key="address")
    extracted_list = []
    category = {'MT1': '마트', 'CS2': '편의점', 'PS3': '유치원', 'SC4':'학교', 'OL7':'주유소', 'SW8': '지하철역', 'BK9': '은행', 'CT1':'문화시설', 'PO3': '공공기관', 'HP8':'병원', 'PN9':'약국'}
@@ -267,8 +280,8 @@ def extract(**context):
       extracted_list.append(data_list)  
    context["ti"].xcom_push(key="extracted_data", value=extracted_list)
 
-# 추출한 인프라 데이터를 변환하는 함수
-def transform(**context):
+
+def infra_transform(**context):
    extracted_list = context["ti"].xcom_pull(key="extracted_data")
    address_list = context["ti"].xcom_pull(key="address")
 
@@ -334,7 +347,6 @@ def load_to_redshift():
    conn.commit()
    cursor.close()
 
-# infra_test 테이블 생성하는 Task
 createInfraTable = PostgresOperator(
     task_id = "create_infra_table",
     postgres_conn_id='rs_conn',
@@ -342,28 +354,39 @@ createInfraTable = PostgresOperator(
     dag=dag
 )
 
-# 매물 좌표 가져오는 Task
+# makeCsvFileData = PythonOperator(
+#    task_id = "make_csv_file",
+#    python_callable=makeCsvFile,
+#    dag=dag
+# )
+
 getAddressData = PythonOperator(
    task_id = "get_address",
    python_callable=getAddress,
    dag=dag
 )
 
-# kakao API에서 인프라 데이터 추출하는 Task
+# 지하철 데이터 추출하는 Task
 DataExtract = PythonOperator(
     task_id = "infra_extract",
-    python_callable=extract,
+    python_callable=infra_extract,
     dag=dag
 )
 
-# 추출한 인프라 데이터 변환하는 Task
+# 지하철 데이터 추출하는 Task
+BusExtract = PythonOperator(
+    task_id = "bus_extract",
+    python_callable=bus_extract,
+    dag=dag
+)
+
+# 추출한 데이터 변환하는 Task
 DataTransform = PythonOperator(
     task_id = "infra_transform",
-    python_callable=transform,
+    python_callable=infra_transform,
     dag=dag
 )
 
-# 변환한 데이터를 csv에 저장
 dataLoadToCSV = PythonOperator(
     task_id = "infra_load_to_csv",
     python_callable=loadToCSV,
