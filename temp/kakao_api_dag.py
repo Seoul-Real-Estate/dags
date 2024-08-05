@@ -411,17 +411,24 @@ DataExtract = PythonOperator(
     dag=dag
 )
 
-# 지하철 데이터 추출하는 Task
+# 버스 데이터 추출하는 Task
 BusExtract = PythonOperator(
     task_id = "bus_extract",
     python_callable=bus_extract,
     dag=dag
 )
 
-# 추출한 데이터 변환하는 Task
+# 추출한 인프라 데이터 변환하는 Task
 DataTransform = PythonOperator(
     task_id = "infra_transform",
     python_callable=infra_transform,
+    dag=dag
+)
+
+# 추출한 버스 데이터 변환하는 Task
+BusTransform = PythonOperator(
+    task_id = "bus_transform",
+    python_callable=bus_transform,
     dag=dag
 )
 
