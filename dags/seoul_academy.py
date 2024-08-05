@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import requests
 import psycopg2
 import time
+import logging
 
 # Redshift 연결 함수
 def get_redshift_connection(autocommit=True):
@@ -14,13 +15,13 @@ def get_redshift_connection(autocommit=True):
     conn.autocommit = autocommit
     return conn.cursor()
 
-# 테이블 생성 task
+# 임시 테이블 생성 task
 @task
-def create_table(schema, table):
+def create_temp_table(schema, temp_table):
     cur = get_redshift_connection()
     create_query = f"""
-    DROP TABLE IF EXISTS {schema}.{table};
-    CREATE TABLE {schema}.{table} (
+    DROP TABLE IF EXISTS {schema}.{temp_table};
+    CREATE TABLE {schema}.{temp_table} (
         id INT IDENTITY(1, 1) PRIMARY KEY,
         district_name VARCHAR(50),
         academy_code VARCHAR(50),
@@ -32,7 +33,8 @@ def create_table(schema, table):
         road_address VARCHAR(255),
         detailed_road_address VARCHAR(255),
         latitude FLOAT,
-        longitude FLOAT
+        longitude FLOAT,
+        legal_dong_name VARCHAR(30)
     );
     """
     cur.execute(create_query)
@@ -48,7 +50,7 @@ def get_list_total_count():
         total_count = data["neisAcademyInfo"]["list_total_count"]
         return total_count
     except requests.RequestException as error:
-        print(f"API request failed: {error}")
+        logging.error(f"API request failed: {error}")
         raise
 
 # 데이터 수집 task
@@ -86,7 +88,7 @@ def process_data():
             
             start_index += unit_value
         except requests.RequestException as error:
-            print(f"API request failed: {error}")
+            logging.error(f"API request failed: {error}")
             raise
 
     return records
@@ -99,62 +101,85 @@ def geocode(records):
 
     for record in records:
         road_address = record[7]  # 주소값 'FA_RDNMA'
+        
+        # 기본값 설정 - 예외가 발생하면 아래의 기본값이 사용됨
+        latitude = None
+        longitude = None
+        legal_dong_name = None
+
         if not road_address:
-            latitude = None
-            longitude = None
-            geocoded_records.append(list(record) + [latitude, longitude])
+            geocoded_records.append(list(record) + [latitude, longitude, legal_dong_name])
             continue
+
         # Kakao API를 사용하여 주소를 좌표로 변환
         url = f'https://dapi.kakao.com/v2/local/search/address.json?query={road_address}&analyze_type=exact'
         headers = {"Authorization": kakao_api_key}
+
         try:
             response = requests.get(url, headers=headers)
             response.raise_for_status()
+
             # 주소 정보에서 좌표 정보 추출
             documents = response.json().get('documents', [])
-            if documents:
-                latitude = round(float(documents[0].get('y', 0)), 6)  # 소수점 이하 6자리로 반올림
-                longitude = round(float(documents[0].get('x', 0)), 6)  # 소수점 이하 6자리로 반올림
-            else:
-                latitude = None
-                longitude = None
-            
-            geocoded_record = list(record) + [latitude, longitude]
+
+            try:
+                latitude = round(float(documents[0]['y']), 6)
+                longitude = round(float(documents[0]['x']), 6)
+                legal_dong_name = documents[0]['road_address']['region_3depth_name']  # 법정동 
+            except (IndexError, KeyError, AttributeError, TypeError):
+                pass  # 기본값이 유지되도록 하고, 에러 무시
+
+            geocoded_record = list(record) + [latitude, longitude, legal_dong_name]
             geocoded_records.append(tuple(geocoded_record))
 
-        except Exception as error:
-            print(f"Error geocoding address {road_address}: {error}")
+        except requests.RequestException as error:
+            logging.error(f"Error RequestException {road_address}: {error}")
+            raise
 
-        time.sleep(0.1)  
+        time.sleep(0.1) 
 
     return geocoded_records
 
-# redshift 테이블에 적재하는 task
+# redshift 임시 테이블에 적재하는 task
 @task
-def load(schema, table, records):
+def load_temp_table(schema, temp_table, records):
     cur = get_redshift_connection(False)
     try:
         cur.execute("BEGIN;")
         insert_query = f"""
-        INSERT INTO {schema}.{table} (
+        INSERT INTO {schema}.{temp_table} (
             district_name, academy_code, academy_name, 
             total_capacity, category_name, course_name,
             postal_code, road_address, detailed_road_address,
-            latitude, longitude
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            latitude, longitude, legal_dong_name
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         for record in records:
             cur.execute(insert_query, record)
         cur.execute("COMMIT;")
     except (Exception, psycopg2.DatabaseError) as error:
-        print(error)
+        logging.error(error)
+        cur.execute("ROLLBACK;")
+        raise
+
+# 임시 테이블을 원본 테이블로 변경하는 task
+@task
+def swap_tables(schema, temp_table, main_table):
+    cur = get_redshift_connection(False)
+    try:
+        cur.execute("BEGIN;")
+        cur.execute(f"DROP TABLE IF EXISTS {schema}.{main_table};")
+        cur.execute(f"ALTER TABLE {schema}.{temp_table} RENAME TO {main_table};")
+        cur.execute("COMMIT;")
+    except (Exception, psycopg2.DatabaseError) as error:
+        logging.error(error)
         cur.execute("ROLLBACK;")
         raise
 
 with DAG(
-    dag_id='seoul_academy',
+    dag_id='seoul_academy_v2',
     start_date=datetime(2024, 7, 10),
-    schedule_interval='@weekly',
+        schedule_interval='0 17 * * 5',  # 한국 기준 토요일 새벽 2시
     catchup=False,
     default_args={
         'retries': 1,
@@ -162,11 +187,13 @@ with DAG(
     }
 ) as dag:
     schema = 'raw_data'
-    table = 'seoul_academy'
+    temp_table = 'temp_seoul_academy'
+    main_table = 'seoul_academy'
 
-    create_table_task = create_table(schema, table)
+    create_temp_table_task = create_temp_table(schema, temp_table)
     process_data_task = process_data()  
     geocode_task = geocode(process_data_task)
-    load_task = load(schema, table, geocode_task)
+    load_temp_table_task = load_temp_table(schema, temp_table, geocode_task)
+    swap_tables_task = swap_tables(schema, temp_table, main_table)
 
-    create_table_task >> process_data_task >> geocode_task >> load_task
+    create_temp_table_task >> process_data_task >> geocode_task >> load_temp_table_task >> swap_tables_task
