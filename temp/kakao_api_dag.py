@@ -470,4 +470,7 @@ load_data_to_redshift = PythonOperator(
     python_callable=load_to_redshift
 )
 
-createInfraTable >> getAddressData >> DataExtract >> DataTransform >> dataLoadToCSV >> upload_data_to_S3 >> load_data_to_redshift
+createInfraTable >> getAddressData >> [DataExtract, BusExtract]
+DataExtract >> DataTransform
+BusExtract >> BusTransform
+[DataTransform, BusTransform] >> CombineAllDataList >> dataLoadToCSV >> upload_data_to_S3 >> load_data_to_redshift
