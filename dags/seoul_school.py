@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import requests
 import psycopg2
 import time
+import logging
 
 # Redshift 연결 함수
 def get_redshift_connection(autocommit=True):
@@ -14,14 +15,14 @@ def get_redshift_connection(autocommit=True):
     conn.autocommit = autocommit
     return conn.cursor()
 
-# 테이블 생성 task
+# 임시 테이블 생성 task
 @task
-def create_table(schema, table):
+def create_temp_table(schema, temp_table):
     cur = get_redshift_connection()
     create_query = f"""
-    DROP TABLE IF EXISTS {schema}.{table};
+    DROP TABLE IF EXISTS {schema}.{temp_table};
 
-    CREATE TABLE {schema}.{table} (
+    CREATE TABLE {schema}.{temp_table} (
         id INT IDENTITY(1, 1) PRIMARY KEY,
         school_code VARCHAR(7),
         school_name VARCHAR(100),
@@ -31,7 +32,9 @@ def create_table(schema, table):
         detailed_road_address VARCHAR(150),
         load_date VARCHAR(8),
         latitude FLOAT,
-        longitude FLOAT
+        longitude FLOAT,
+        district_name VARCHAR(30),
+        legal_dong_name VARCHAR(30)
     );
     """
     cur.execute(create_query)
@@ -48,7 +51,7 @@ def get_list_total_count():
         return total_count
     
     except requests.RequestException as error:
-        print(f"API request failed: {error}")
+        logging.error(f"API request failed: {error}")
         raise
 
 # 데이터 수집 task
@@ -84,7 +87,7 @@ def process_data():
             
             start_index += unit_value
         except requests.RequestException as error:
-            print(f"API request failed: {error}")
+            logging.error(f"API request failed: {error}")
             raise
 
     return records
@@ -97,7 +100,6 @@ def geocode(records):
 
     for record in records:
         road_address = record[4]  # 주소 데이터 'ORG_RDNMA'
-        # Kakao API를 사용하여 주소를 좌표로 변환
         url = f'https://dapi.kakao.com/v2/local/search/address.json?query={road_address}&analyze_type=exact'
         headers = {"Authorization": kakao_api_key}
         try:
@@ -108,45 +110,63 @@ def geocode(records):
             if documents:
                 latitude = round(float(documents[0].get('y', 0)), 6)  # 소수점 이하 6자리로 반올림
                 longitude = round(float(documents[0].get('x', 0)), 6)  # 소수점 이하 6자리로 반올림
+                district_name = documents[0]['road_address']['region_2depth_name']  # 자치구 이름 
+                legal_dong_name = documents[0]['road_address']['region_3depth_name']  # 법정동 이름
             else:
                 latitude = None
                 longitude = None
+                district_name = None
+                legal_dong_name = None
             
-            geocoded_record = list(record) + [latitude, longitude]
+            geocoded_record = list(record) + [latitude, longitude, district_name, legal_dong_name]
             geocoded_records.append(tuple(geocoded_record))
 
         except  requests.RequestException as error:
-            print(f"Error geocoding: {error}")
+            logging.error(f"Error geocoding: {error}")
             raise
 
         time.sleep(0.1)  
 
     return geocoded_records
 
-# redshift 테이블에 적재하는 task
+# 임시 테이블에 데이터를 적재하는 task
 @task
-def load(schema, table, records):
+def load_temp_table(schema, temp_table, records):
     cur = get_redshift_connection(False)
     try:
         cur.execute("BEGIN;")
         insert_query = f"""
-        INSERT INTO {schema}.{table} (
+        INSERT INTO {schema}.{temp_table} (
             school_code, school_name, school_type, postal_code, 
-            road_address, detailed_road_address, load_date, latitude, longitude
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            road_address, detailed_road_address, load_date, latitude, longitude, district_name, legal_dong_name
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         for record in records:
             cur.execute(insert_query, record)
         cur.execute("COMMIT;")
     except (Exception, psycopg2.DatabaseError) as error:
-        print(error)
+        logging.error(error)
+        cur.execute("ROLLBACK;")
+        raise
+
+# 임시 테이블을 원본 테이블로 변경하는 task
+@task
+def swap_tables(schema, temp_table, main_table):
+    cur = get_redshift_connection(False)
+    try:
+        cur.execute("BEGIN;")
+        cur.execute(f"DROP TABLE IF EXISTS {schema}.{main_table};")
+        cur.execute(f"ALTER TABLE {schema}.{temp_table} RENAME TO {main_table};")
+        cur.execute("COMMIT;")
+    except (Exception, psycopg2.DatabaseError) as error:
+        logging.error(error)
         cur.execute("ROLLBACK;")
         raise
 
 with DAG(
-    dag_id='seoul_school',
+    dag_id='seoul_school_v2',
     start_date=datetime(2024, 7, 10),  
-    schedule_interval='@weekly',
+        schedule_interval='0 17 * * 5',  # 한국 기준 토요일 새벽 2시
     catchup=False,
     default_args={
         'retries': 1,
@@ -154,11 +174,13 @@ with DAG(
     }
 ) as dag:
     schema = 'raw_data'
-    table = 'seoul_school'
+    temp_table = 'temp_seoul_school'
+    main_table = 'seoul_school'
 
-    create = create_table(schema, table)
+    create_temp_table_task = create_temp_table(schema, temp_table)
     process_task = process_data()
     geocode_task = geocode(process_task)
-    load_task = load(schema, table, geocode_task)
+    load_temp_table_task = load_temp_table(schema, temp_table, geocode_task)
+    swap_tables_task = swap_tables(schema, temp_table, main_table)
 
-    create >> process_task >> geocode_task >> load_task
+    create_temp_table_task >> process_task >> geocode_task >> load_temp_table_task >> swap_tables_task

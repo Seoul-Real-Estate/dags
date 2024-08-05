@@ -5,7 +5,7 @@ from airflow.models import Variable
 from datetime import datetime, timedelta
 import requests
 import psycopg2
-import time
+import logging
 
 # Redshift 연결 함수
 def get_redshift_connection(autocommit=True):
@@ -14,13 +14,13 @@ def get_redshift_connection(autocommit=True):
     conn.autocommit = autocommit
     return conn.cursor()
 
-# 테이블 생성 task
+# 임시 테이블 생성 task
 @task
-def create_table(schema, table):
+def create_temp_table(schema, temp_table):
     cur = get_redshift_connection()
     create_query = f"""
-    DROP TABLE IF EXISTS {schema}.{table};
-    CREATE TABLE {schema}.{table} (
+    DROP TABLE IF EXISTS {schema}.{temp_table};
+    CREATE TABLE {schema}.{temp_table} (
         id INT IDENTITY(1, 1) PRIMARY KEY,
         screen_name VARCHAR(100),
         status_code VARCHAR(10),
@@ -33,7 +33,9 @@ def create_table(schema, table):
         update_type CHAR(1),
         update_date DATE,
         latitude FLOAT,
-        longitude FLOAT
+        longitude FLOAT,
+        district_name VARCHAR(30),
+        legal_dong_name VARCHAR(30)
     );
     """
     cur.execute(create_query)
@@ -50,7 +52,7 @@ def get_list_total_count():
         return total_count
     
     except requests.RequestException as error:
-        print(f"API request failed: {error}")
+        logging.error(f"API request failed: {error}")
         raise
 
 # 데이터 수집 task
@@ -93,7 +95,7 @@ def process_data():
             start_index += unit_value
 
         except requests.RequestException as error:
-            print(f"API request failed: {error}")
+            logging.error(f"API request failed: {error}")
             raise
         
     return records
@@ -120,43 +122,61 @@ def geocode(records):
         if response.status_code == 200:
             try:
                 response_json = response.json()
-                result = response_json['response']['result']['point']
-                latitude = result['y']  # 위도
-                longitude = result['x']  # 경도
-            except (IndexError, KeyError):
+                result = response_json['response']
+                latitude = result['result']['point']['y']  # 위도
+                longitude = result['result']['point']['x']  # 경도
+                district_name = result['refined']['structure']['level2']  # 자치구 이름
+                legal_dong_name = result['refined']['structure']['level3']  # 법정동 이름 
+            except (IndexError, KeyError, TypeError, AttributeError):
                 latitude = None
                 longitude = None
+                district_name = None
+                legal_dong_name = None
             
-            geocoded_record = list(record) + [latitude, longitude]
+            geocoded_record = list(record) + [latitude, longitude, district_name, legal_dong_name]
             geocoded_records.append(tuple(geocoded_record))
 
     return geocoded_records
 
-# redshift 테이블에 적재하는 task
+# redshift 임시 테이블에 적재하는 task
 @task
-def load(schema, table, records):
+def load_temp_table(schema, temp_table, records):
     cur = get_redshift_connection(False)
     try:
         cur.execute("BEGIN;")
         insert_query = f"""
-        INSERT INTO {schema}.{table} (
+        INSERT INTO {schema}.{temp_table} (
             screen_name, status_code, status_name, detailed_status_code, 
             detailed_status_name, address, road_address, last_modified_date, 
-            update_type, update_date, latitude, longitude
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            update_type, update_date, latitude, longitude, district_name, legal_dong_name
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         for record in records:
             cur.execute(insert_query, record)
         cur.execute("COMMIT;")
     except (Exception, psycopg2.DatabaseError) as error:
-        print(error)
+        logging.error(error)
+        cur.execute("ROLLBACK;")
+        raise
+
+# 임시 테이블을 원본 테이블로 변경하는 task
+@task
+def swap_tables(schema, temp_table, main_table):
+    cur = get_redshift_connection(False)
+    try:
+        cur.execute("BEGIN;")
+        cur.execute(f"DROP TABLE IF EXISTS {schema}.{main_table};")
+        cur.execute(f"ALTER TABLE {schema}.{temp_table} RENAME TO {main_table};")
+        cur.execute("COMMIT;")
+    except (Exception, psycopg2.DatabaseError) as error:
+        logging.error(error)
         cur.execute("ROLLBACK;")
         raise
 
 with DAG(
-    dag_id='seoul_cinema',
+    dag_id='seoul_cinema_v2',
     start_date=datetime(2024, 7, 10),
-    schedule_interval='@weekly',
+        schedule_interval='0 17 * * 5',  # 한국 기준 토요일 새벽 2시
     catchup=False,
     default_args={
         'retries': 1,
@@ -164,11 +184,13 @@ with DAG(
     }
 ) as dag:
     schema = 'raw_data'
-    table = 'seoul_cinema'
+    temp_table = 'temp_seoul_cinema'
+    main_table = 'seoul_cinema'
 
-    create = create_table(schema, table)
-    records = process_data()
-    geocode_task = geocode(records)
-    load_task = load(schema, table, geocode_task)
+    create_temp_table_task = create_temp_table(schema, temp_table)
+    process_data_task = process_data()  
+    geocode_task = geocode(process_data_task)
+    load_temp_table_task = load_temp_table(schema, temp_table, geocode_task)
+    swap_tables_task = swap_tables(schema, temp_table, main_table)
 
-    create >> records >> geocode_task >> load_task
+    create_temp_table_task >> process_data_task >> geocode_task >> load_temp_table_task >> swap_tables_task
