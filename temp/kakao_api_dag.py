@@ -11,7 +11,7 @@ import xml.etree.ElementTree as ET
 import pendulum
 import json
 import pandas as pd
-import os
+import math
 
 kst = pendulum.timezone("Asia/Seoul")
 
@@ -224,7 +224,22 @@ CREATE TABLE IF NOT EXISTS analytics.infra_test (
     pharmacy_category_3 VARCHAR(500),
     pharmacy_address_3 VARCHAR(500),
     pharmacy_x_3 FLOAT,
-    pharmacy_y_3 FLOAT
+    pharmacy_y_3 FLOAT,
+    bus_station_id_1 INT,
+    bus_station_name_1 VARCHAR(500),
+    bus_station_distance_1 INT,
+    bus_station_x_1 FLOAT,
+    bus_station_y_1 FLOAT,
+    bus_station_id_2 INT,
+    bus_station_name_2 VARCHAR(500),
+    bus_station_distance_2 INT,
+    bus_station_x_2 FLOAT,
+    bus_station_y_2 FLOAT,
+    bus_station_id_3 INT,
+    bus_station_name_3 VARCHAR(500),
+    bus_station_distance_3 INT,
+    bus_station_x_3 FLOAT,
+    bus_station_y_3 FLOAT,
 );
 """
 
@@ -278,20 +293,20 @@ def infra_extract(**context):
             data["documents"] = temp
          data_list.extend(data["documents"])
       extracted_list.append(data_list)  
-   context["ti"].xcom_push(key="extracted_data", value=extracted_list)
+   context["ti"].xcom_push(key="infra_extracted_data", value=extracted_list)
 
 
 def infra_transform(**context):
-   extracted_list = context["ti"].xcom_pull(key="extracted_data")
+   infra_extracted_list = context["ti"].xcom_pull(key="infra_extracted_data")
    address_list = context["ti"].xcom_pull(key="address")
 
    category_dict = {'MT1': 'mart', 'CS2': 'convenience', 'PS3': 'preschool', 'SC4':'school', 'OL7':'gas_station', 'SW8': 'subway', 'BK9': 'bank', 'CT1':'culture', 'PO3': 'public', 'HP8':'hospital', 'PN9':'pharmacy'}
    attributes = ['name', 'distance', 'category', 'address', 'x', 'y']
 
    trans_list = []
-   for ex_idx in range(len(extracted_list)):
+   for ex_idx in range(len(infra_extracted_list)):
       trans_dict = {}
-      extract = extracted_list[ex_idx]
+      extract = infra_extracted_list[ex_idx]
       logging.info(extract)
       trans_dict[f'x'] = float(address_list[ex_idx][0])
       trans_dict[f'y'] = float(address_list[ex_idx][1])
@@ -304,9 +319,38 @@ def infra_transform(**context):
             trans_dict[f'{category_dict[code]}_address_{idx+1}'] = extract_data['road_address_name']
             trans_dict[f'{category_dict[code]}_x_{idx+1}'] = float(extract_data['x'])
             trans_dict[f'{category_dict[code]}_y_{idx+1}'] = float(extract_data['y'])
+
       trans_list.append(trans_dict)
    
-   context["ti"].xcom_push(key="transformed_data", value=trans_list)
+   context["ti"].xcom_push(key="infra_transformed_data", value=trans_list)
+
+def bus_transform(**context):
+   bus_extracted_list = context["ti"].xcom_pull(key="bus_extracted_data")
+   address_list = context["ti"].xcom_pull(key="address")
+
+   trans_list = []
+   for idx in range(len(bus_extracted_list)):
+      address = address_list[idx]
+      bus_trans_dict = {}
+      json_data = json.loads(bus_extracted_list[idx])
+      for element in json_data['result']['lane']:
+         for i in range(3):
+            station_x = element["x"]
+            station_y = element["y"]
+            house_x = address[0]
+            house_y = address[1]
+
+            distance = math.ceil(math.sqrt((abs(station_x - house_x)**2) + (abs(station_y - house_y)**2)))
+
+            bus_trans_dict[f'bus_station_id_{i+1}'] = element["stationID"]
+            bus_trans_dict[f'bus_station_name_{i+1}'] = element["stationName"]
+            bus_trans_dict[f'bus_station_distance_{i+1}'] = distance
+            bus_trans_dict[f'bus_station_x_{i+1}'] = element["x"]
+            bus_trans_dict[f'bus_station_y_{i+1}'] = element["y"]
+         trans_list.append(bus_trans_dict)
+
+   context["ti"].xcom_push(key="bus_transformed_data", value=trans_list)
+
 
 def loadToCSV(**context):
    data_list = context["ti"].xcom_pull(key="transformed_data")
@@ -353,12 +397,6 @@ createInfraTable = PostgresOperator(
     sql=CREATE_QUERY,
     dag=dag
 )
-
-# makeCsvFileData = PythonOperator(
-#    task_id = "make_csv_file",
-#    python_callable=makeCsvFile,
-#    dag=dag
-# )
 
 getAddressData = PythonOperator(
    task_id = "get_address",
