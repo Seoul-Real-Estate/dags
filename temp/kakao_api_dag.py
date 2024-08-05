@@ -286,6 +286,7 @@ def infra_extract(**context):
 
          response = requests.get(url, headers=headers, params=params)
          data = json.loads(response.text)
+         logging.info(data)
          if data["documents"] == []:
             temp = []
             for i in range(3):
@@ -337,8 +338,8 @@ def bus_transform(**context):
          for i in range(3):
             station_x = float(element["x"])
             station_y = float(element["y"])
-            house_x = address[0]
-            house_y = address[1]
+            house_x = float(address[0])
+            house_y = float(address[1])
 
             distance = math.ceil(math.sqrt((abs(station_x - house_x)**2) + (abs(station_y - house_y)**2)))
 
