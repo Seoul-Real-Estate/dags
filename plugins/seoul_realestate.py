@@ -533,3 +533,4 @@ class realestate:
         newdf[["위도", "경도"]] = pd.DataFrame(coordinates.tolist(), index = newdf.index)
         findf = newdf[fincols]
         return findf
+#test5
