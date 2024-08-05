@@ -351,9 +351,21 @@ def bus_transform(**context):
 
    context["ti"].xcom_push(key="bus_transformed_data", value=trans_list)
 
+def combineAllData(**context):
+   address_list = context["ti"].xcom_pull(key="address")
+   bus_data_list = context["ti"].xcom_pull(key="bus_transformed_data")
+   infra_data_list = context["ti"].xcom_pull(key="infra_transformed_data")
+
+   result = []
+   for i in range(len(address_list)):
+      r = infra_data_list[i]
+      r.update(bus_data_list[i])
+      result.append(r)
+   
+   context["ti"].xcom_push(key="combined_data", value=result)
 
 def loadToCSV(**context):
-   data_list = context["ti"].xcom_pull(key="transformed_data")
+   data_list = context["ti"].xcom_pull(key="combined_data")
    df = pd.DataFrame(data_list)
    df.to_csv("infra_test.csv", index=False)
 
@@ -429,6 +441,12 @@ DataTransform = PythonOperator(
 BusTransform = PythonOperator(
     task_id = "bus_transform",
     python_callable=bus_transform,
+    dag=dag
+)
+
+CombineAllDataList= PythonOperator(
+    task_id = "combine_all_data",
+    python_callable=combineAllData,
     dag=dag
 )
 
