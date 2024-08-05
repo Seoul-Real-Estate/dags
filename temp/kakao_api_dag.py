@@ -239,7 +239,7 @@ CREATE TABLE IF NOT EXISTS analytics.infra_test (
     bus_station_name_3 VARCHAR(500),
     bus_station_distance_3 INT,
     bus_station_x_3 FLOAT,
-    bus_station_y_3 FLOAT,
+    bus_station_y_3 FLOAT
 );
 """
 
@@ -335,8 +335,8 @@ def bus_transform(**context):
       json_data = json.loads(bus_extracted_list[idx])
       for element in json_data['result']['lane']:
          for i in range(3):
-            station_x = element["x"]
-            station_y = element["y"]
+            station_x = float(element["x"])
+            station_y = float(element["y"])
             house_x = address[0]
             house_y = address[1]
 
