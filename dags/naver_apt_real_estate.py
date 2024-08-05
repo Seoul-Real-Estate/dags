@@ -318,9 +318,6 @@ def naver_apt_real_estate():
 
         real_estate_df = pd.concat(real_estate_df_list, ignore_index=True)
 
-        # 테스트용 10개
-        real_estate_df = real_estate_df.head(10)
-
         # redshift 조회 후 비교하여 새로운 매물만 추출
         article_numbers = get_real_estate_primary_keys(schema)
         new_real_estate_df = real_estate_df[~real_estate_df['articleNo'].isin(article_numbers)]
@@ -455,7 +452,6 @@ def naver_apt_real_estate():
         real_estate_df['updated_at'] = datetime.now()
         real_estate_df['supply_area'] = real_estate_df['area1']
         real_estate_df['exclusive_area'] = real_estate_df['area2']
-
 
         # 컬럼 순서 맞추기
         desired_columns = ['articleNo', 'realtorId', 'complexNo', 'articleName', 'realEstateTypeName', 'tradeTypeName',
