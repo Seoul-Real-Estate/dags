@@ -334,21 +334,21 @@ def bus_transform(**context):
       address = address_list[idx]
       bus_trans_dict = {}
       json_data = json.loads(bus_extracted_list[idx])
-      for element in json_data['result']['lane']:
-         for i in range(3):
-            station_x = float(element["x"])
-            station_y = float(element["y"])
-            house_x = float(address[0])
-            house_y = float(address[1])
+      for i in range(3):
+         element = json_data['result']['lane'][i]
+         station_x = float(element["x"])
+         station_y = float(element["y"])
+         house_x = float(address[0])
+         house_y = float(address[1])
 
-            distance = math.ceil(math.sqrt((abs(station_x - house_x)**2) + (abs(station_y - house_y)**2)))
+         distance = math.ceil(math.sqrt((abs(station_x - house_x)**2) + (abs(station_y - house_y)**2)))
 
-            bus_trans_dict[f'bus_station_id_{i+1}'] = element["stationID"]
-            bus_trans_dict[f'bus_station_name_{i+1}'] = element["stationName"]
-            bus_trans_dict[f'bus_station_distance_{i+1}'] = distance
-            bus_trans_dict[f'bus_station_x_{i+1}'] = element["x"]
-            bus_trans_dict[f'bus_station_y_{i+1}'] = element["y"]
-         trans_list.append(bus_trans_dict)
+         bus_trans_dict[f'bus_station_id_{i+1}'] = element["stationID"]
+         bus_trans_dict[f'bus_station_name_{i+1}'] = element["stationName"]
+         bus_trans_dict[f'bus_station_distance_{i+1}'] = distance
+         bus_trans_dict[f'bus_station_x_{i+1}'] = element["x"]
+         bus_trans_dict[f'bus_station_y_{i+1}'] = element["y"]
+      trans_list.append(bus_trans_dict)
 
    context["ti"].xcom_push(key="bus_transformed_data", value=trans_list)
 
