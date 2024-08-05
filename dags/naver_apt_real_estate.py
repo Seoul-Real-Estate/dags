@@ -22,7 +22,7 @@ iam_role = Variable.get('aws_iam_role')
 
 
 def get_redshift_connection(autocommit=True):
-    hook = RedshiftSQLHook(redshift_conn_id='redshift_dev_db')
+    hook = RedshiftSQLHook(redshift_conn_id='redshift_dev')
     conn = hook.get_conn()
     conn.autocommit = autocommit
     return conn.cursor()
@@ -42,8 +42,7 @@ def upload_to_s3(bucket_name, file_name, data_frame):
     csv_buffer = StringIO()
     key = 'data/' + file_name
     data_frame.to_csv(csv_buffer, index=False)
-    s3_hook.load_string(string_data=csv_buffer.getvalue(), key=key, bucket_name=bucket_name,
-                        replace=True)
+    s3_hook.load_string(string_data=csv_buffer.getvalue(), key=key, bucket_name=bucket_name, replace=True)
 
 
 # file_name 파일이 S3 bucket_name 에 있는가?
@@ -165,7 +164,7 @@ def get_today_file_name(file_name):
 @dag(
     default_args=default_args,
     description="네이버부동산 아파트/오피스텔 데이터 수집 및 적재 DAG",
-    schedule_interval='0 10 * * *',  # 매일 오전 10시 실행
+    schedule_interval='0 1 * * *',  # 매일 오전 10시 실행
     start_date=datetime(2024, 8, 1),
     catchup=False,
     tags=['daily', 'real_estate', 'naver']
@@ -324,7 +323,7 @@ def naver_apt_real_estate():
                            'complexNo']
         real_estate_df = real_estate_df[desired_columns]
 
-        # loc를 사용하여 rentPrc 열의 NaN 값을 0으로 대체
+        # loc를 사용하여 ren오tPrc 열의 NaN 값을 0으로 대체
         real_estate_df.loc[:, 'rentPrc'] = real_estate_df['rentPrc'].fillna(0)
 
         # redshift 조회 후 비교하여 새로운 매물만 추출
