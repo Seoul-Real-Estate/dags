@@ -311,7 +311,7 @@ def naver_apt_real_estate():
         complex_numbers = get_complex_primary_keys(schema)
         real_estate_df_list = []
 
-        for complexNo in complex_numbers[:20]:
+        for complexNo in complex_numbers:
             real_estate_df = get_apt_real_estate_info(base_headers, complexNo)
             real_estate_df['complexNo'] = complexNo
             real_estate_df_list.append(real_estate_df)
