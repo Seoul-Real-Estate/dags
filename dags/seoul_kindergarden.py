@@ -128,7 +128,7 @@ def swap_tables(schema, temp_table, main_table):
 with DAG(
     dag_id='seoul_kindergarden_v2',
     start_date=datetime(2024, 7, 10),
-    schedule_interval='0 17 * * 5',  # 한국 기준 토요일 새벽 2시
+    schedule_interval='0 1 * * 6',  # 한국 기준 토요일 오전 10시 실행 
     catchup=False,
     default_args={
         'retries': 1,

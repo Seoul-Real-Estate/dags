@@ -90,7 +90,7 @@ def replace_table(table):
 with DAG(
     dag_id='analytics_seoul_hospital',
     start_date=datetime(2024, 8, 1),
-    schedule_interval='0 19 27 * *',  # 한국 기준 매월 28일 새벽 4시
+    schedule_interval='0 4 28 * *',  # 한국 기준 매월 28일 오후 1시
     catchup=False
 ) as dag:
     table = 'seoul_hospital'

@@ -101,7 +101,7 @@ def load(schema, table, records):
 with DAG(
     dag_id='seoul_commercial_district',
     start_date=datetime(2024, 7, 10),  
-    schedule='0 1 15 * *',  # 매월 15일 오전 1시
+    schedule='0 1 15 * *',  # 한국 기준 매월 15일 오전 10시
     catchup=False,
     default_args={
         'retries': 1,
