@@ -164,10 +164,10 @@ def get_today_file_name(file_name):
 @dag(
     default_args=default_args,
     description="네이버부동산 아파트/오피스텔 데이터 수집 및 적재 DAG",
-    schedule_interval='0 1 * * *',  # 매일 오전 10시 실행
-    start_date=datetime(2024, 8, 1),
+    schedule_interval='0 1 * * *',
+    start_date=datetime(2024, 8, 4),
     catchup=False,
-    tags=['daily', 'real_estate', 'naver']
+    tags=['daily', 'real_estate', 'naver', 'apt']
 )
 def naver_apt_real_estate():
     schema = 'raw_data'
@@ -317,14 +317,6 @@ def naver_apt_real_estate():
             real_estate_df_list.append(real_estate_df)
 
         real_estate_df = pd.concat(real_estate_df_list, ignore_index=True)
-        desired_columns = ['articleNo', 'articleName', 'realEstateTypeName', 'tradeTypeName', 'floorInfo',
-                           'dealOrWarrantPrc', 'rentPrc', 'area1', 'area2', 'direction', 'articleConfirmYmd',
-                           'articleFeatureDesc', 'tagList', 'buildingName', 'latitude', 'longitude', 'realtorId',
-                           'complexNo']
-        real_estate_df = real_estate_df[desired_columns]
-
-        # loc를 사용하여 ren오tPrc 열의 NaN 값을 0으로 대체
-        real_estate_df.loc[:, 'rentPrc'] = real_estate_df['rentPrc'].fillna(0)
 
         # redshift 조회 후 비교하여 새로운 매물만 추출
         article_numbers = get_real_estate_primary_keys(schema)
@@ -349,6 +341,21 @@ def naver_apt_real_estate():
         today_real_estate_file_name = get_today_file_name(real_estate_file_name)
         real_estate_df = get_csv_from_s3(bucket_name, today_real_estate_file_name)
 
+        # 필요한 열 추가
+        necessary_columns = [
+            'complexNo', 'articleName', 'detailAddress', 'exposureAddress', 'parkingCount', 'parkingPossibleYN',
+            'principalUse', 'useApproveYmd', 'cortarNo', 'roomCount', 'bathroomCount', 'detailDescription',
+            'rentPrice', 'warrantPrice', 'dealPrice', 'hoNm', 'correspondingFloorCount', 'totalFloorCount',
+            'address', 'roadAddress', 'etcAddress', 'roomFacilityCodes', 'roomFacilities', 'buildingFacilityCodes',
+            'buildingFacilities', 'roofTopYN', 'exposeStartYMD', 'exposeEndYMD', 'walkingTimeToNearSubway',
+            'heatMethodTypeCode', 'heatMethodTypeName', 'heatFuelTypeCode', 'heatFuelTypeName', 'supply_area',
+            'exclusive_area'
+        ]
+
+        for column in necessary_columns:
+            if column not in real_estate_df.columns:
+                real_estate_df[column] = None
+
         for idx, row in real_estate_df.iterrows():
             apt_detail_info = get_real_estate_detail_info(base_headers, row['articleNo'])
             articleDetail = apt_detail_info.get('articleDetail', {})
@@ -356,10 +363,13 @@ def naver_apt_real_estate():
             articleFloor = apt_detail_info.get('articleFloor', {})
             landPrice = apt_detail_info.get('landPrice', {})
             articleRealtor = apt_detail_info.get('articleRealtor', {})
+            articleOneroom = apt_detail_info.get('articleOneroom', {})
+            articleFacility = apt_detail_info.get('articleFacility', {})
 
             # 아파트 매물 테이블에 컬럼값 추가
-            real_estate_df.loc[idx, 'detailAddress'] = articleDetail.get('detailAddress')
-            real_estate_df.loc[idx, 'exposureAddress'] = articleDetail.get('exposureAddress')
+            real_estate_df.loc[idx, 'articleName'] = articleDetail.get('articleName')
+            real_estate_df.loc[idx, 'detailAddress'] = articleDetail.get('detailAddress', '')
+            real_estate_df.loc[idx, 'exposureAddress'] = articleDetail.get('exposureAddress', '')
             real_estate_df.loc[idx, 'parkingCount'] = articleDetail.get('aptParkingCount')
             real_estate_df.loc[idx, 'parkingPossibleYN'] = articleDetail.get('parkingPossibleYN')
             real_estate_df.loc[idx, 'principalUse'] = articleDetail.get('principalUse')
@@ -367,7 +377,6 @@ def naver_apt_real_estate():
             real_estate_df.loc[idx, 'cortarNo'] = articleDetail.get('cortarNo')
             real_estate_df.loc[idx, 'roomCount'] = articleDetail.get('roomCount')
             real_estate_df.loc[idx, 'bathroomCount'] = articleDetail.get('bathroomCount')
-            real_estate_df.loc[idx, 'articleName'] = articleDetail.get('articleName')
             real_estate_df.loc[idx, 'detailDescription'] = articleDetail.get('detailDescription', '')
             real_estate_df.loc[idx, 'rentPrice'] = articlePrice.get('rentPrice')
             real_estate_df.loc[idx, 'warrantPrice'] = articlePrice.get('warrantPrice')
@@ -375,6 +384,27 @@ def naver_apt_real_estate():
             real_estate_df.loc[idx, 'hoNm'] = landPrice.get('hoNm')
             real_estate_df.loc[idx, 'correspondingFloorCount'] = articleFloor.get('correspondingFloorCount')
             real_estate_df.loc[idx, 'totalFloorCount'] = articleFloor.get('totalFloorCount')
+            real_estate_df.loc[idx, 'etcAddress'] = articleDetail.get('etcAddress')
+
+            if articleOneroom:
+                real_estate_df.at[idx, 'roomFacilityCodes'] = articleOneroom.get('roomFacilityCodes', '')
+                real_estate_df.at[idx, 'roomFacilities'] = articleOneroom.get('roomFacilities', [])
+                real_estate_df.at[idx, 'buildingFacilityCodes'] = articleOneroom.get('buildingFacilityCodes', '')
+                real_estate_df.at[idx, 'buildingFacilities'] = articleOneroom.get('buildingFacilities', [])
+                real_estate_df.loc[idx, 'roofTopYN'] = articleOneroom.get('roofTopYN', '')
+            else:
+                real_estate_df.at[idx, 'roomFacilityCodes'] = articleFacility.get('lifeFacilityList', '')
+                real_estate_df.at[idx, 'roomFacilities'] = articleFacility.get('lifeFacilities', [])
+                real_estate_df.at[idx, 'buildingFacilityCodes'] = articleFacility.get('securityFacilityList', '')
+                real_estate_df.at[idx, 'buildingFacilities'] = articleFacility.get('securityFacilities', [])
+
+            real_estate_df.loc[idx, 'exposeStartYMD'] = articleDetail.get('exposeStartYMD')
+            real_estate_df.loc[idx, 'exposeEndYMD'] = articleDetail.get('exposeEndYMD')
+            real_estate_df.loc[idx, 'walkingTimeToNearSubway'] = articleDetail.get('walkingTimeToNearSubway')
+            real_estate_df.loc[idx, 'heatMethodTypeCode'] = articleFacility.get('heatMethodTypeCode', '')
+            real_estate_df.loc[idx, 'heatMethodTypeName'] = articleFacility.get('heatMethodTypeName', '')
+            real_estate_df.loc[idx, 'heatFuelTypeCode'] = articleFacility.get('heatFuelTypeCode', '')
+            real_estate_df.loc[idx, 'heatFuelTypeName'] = articleFacility.get('heatFuelTypeName', '')
 
             # 공인중개사 값 추가
             realtor_infos.append(articleRealtor)
@@ -399,9 +429,12 @@ def naver_apt_real_estate():
 
     # 매물 타입 및 컬럼 전처리
     @task
-    def process_apt_real_estate_transform():
+    def transform_apt_real_estate():
         today_real_estate_file_name = get_today_file_name(real_estate_file_name)
         real_estate_df = get_csv_from_s3(bucket_name, today_real_estate_file_name)
+
+        # loc를 사용하여 rentPrc 열의 NaN 값을 0으로 대체
+        real_estate_df.loc[:, 'rentPrc'] = real_estate_df['rentPrc'].fillna(0)
 
         # 정수형 필드에 문자열이 올 경우 NaN 변환
         clean_numeric_column(real_estate_df, 'roomCount')
@@ -410,39 +443,39 @@ def naver_apt_real_estate():
         clean_numeric_column(real_estate_df, 'warrantPrice')
         clean_numeric_column(real_estate_df, 'rentPrice')
 
-        real_estate_df['area1'] = real_estate_df['area1'].fillna(0).astype(int)
-        real_estate_df['area2'] = real_estate_df['area2'].fillna(0).astype(int)
+        real_estate_df['walkingTimeToNearSubway'] = real_estate_df['walkingTimeToNearSubway'].fillna(0).astype(int)
+        real_estate_df['supply_area'] = real_estate_df['area1'].fillna(0).astype(int)
+        real_estate_df['exclusive_area'] = real_estate_df['area2'].fillna(0).astype(int)
         real_estate_df['parkingCount'] = real_estate_df['parkingCount'].fillna(0).astype(int)
         real_estate_df['roomCount'] = real_estate_df['roomCount'].fillna(0).astype(int)
         real_estate_df['bathroomCount'] = real_estate_df['bathroomCount'].fillna(0).astype(int)
         real_estate_df['created_at'] = datetime.now()
         real_estate_df['updated_at'] = datetime.now()
 
-        new_columns = {
-            'address': None,
-            'roadAddress': None,
-            'etcAddress': None,
-            'roomFacilityCodes': None,
-            'roomFacilities': None,
-            'buildingFacilityCodes': None,
-            'buildingFacilities': None,
-            'roofTopYN': None
-        }
-
-        for column, value in new_columns.items():
-            real_estate_df[column] = value
-
-        upload_to_s3(bucket_name, today_real_estate_file_name, real_estate_df)
+        # 컬럼 순서 맞추기
+        desired_columns = ['articleNo', 'realtorId', 'complexNo', 'articleName', 'realEstateTypeName', 'tradeTypeName',
+                           'floorInfo', 'correspondingFloorCount', 'totalFloorCount', 'dealOrWarrantPrc', 'rentPrc',
+                           'dealPrice', 'warrantPrice', 'rentPrice', 'supply_area', 'exclusive_area', 'direction',
+                           'articleConfirmYmd', 'articleFeatureDesc', 'detailDescription', 'tagList', 'latitude',
+                           'longitude', 'detailAddress', 'exposureAddress', 'address', 'roadAddress', 'etcAddress',
+                           'buildingName', 'hoNm', 'cortarNo', 'parkingCount', 'parkingPossibleYN', 'principalUse',
+                           'roomCount', 'bathroomCount', 'roomFacilityCodes', 'roomFacilities', 'buildingFacilityCodes',
+                           'buildingFacilities', 'roofTopYN', 'useApproveYmd', 'exposeStartYMD', 'exposeEndYMD',
+                           'walkingTimeToNearSubway', 'heatMethodTypeCode', 'heatMethodTypeName', 'heatFuelTypeCode',
+                           'heatFuelTypeName', 'created_at', 'updated_at',
+                           ]
+        real_estate_df = real_estate_df[desired_columns]
+        today_transform_file_name = get_today_file_name('transform_' + real_estate_file_name)
+        upload_to_s3(bucket_name, today_transform_file_name, real_estate_df)
 
     # 새로운 매물 redshift 적재
     @task
     def load_to_redshift_real_estate():
-        today = datetime.now().strftime('%Y-%m-%d')
-        today_real_estate_file_name = get_today_file_name(real_estate_file_name)
+        today_transform_file_name = get_today_file_name('transform_' + real_estate_file_name)
         cur = get_redshift_connection()
         cur.execute(f"""
                     COPY {schema}.naver_real_estate
-                    FROM 's3://team-ariel-2-data/data/{today_real_estate_file_name}'
+                    FROM 's3://team-ariel-2-data/data/{today_transform_file_name}'
                     IAM_ROLE '{iam_role}'
                     CSV
                     IGNOREHEADER 1;""")
@@ -476,18 +509,18 @@ def naver_apt_real_estate():
             return False
 
         # 새로운 데이터 S3 적재
-        today_new_realtor_file_name = get_today_file_name('_new_' + realtor_file_name)
-        upload_to_s3(bucket_name, today_new_realtor_file_name, new_df)
+        today_realtor_file_name = get_today_file_name(realtor_file_name)
+        upload_to_s3(bucket_name, today_realtor_file_name, new_df)
         return True
 
     # 새로운 공인중개사 redshift 적재
     @task
     def load_to_redshift_realtor():
-        today_new_realtor_file_name = get_today_file_name('_new_' + realtor_file_name)
+        today_realtor_file_name = get_today_file_name(realtor_file_name)
         cur = get_redshift_connection()
         cur.execute(f"""
                     COPY {schema}.naver_realtor
-                    FROM 's3://team-ariel-2-data/data/{today_new_realtor_file_name}'
+                    FROM 's3://team-ariel-2-data/data/{today_realtor_file_name}'
                     IAM_ROLE '{iam_role}'
                     CSV
                     IGNOREHEADER 1;""")
@@ -501,7 +534,7 @@ def naver_apt_real_estate():
     load_to_redshift_complex_task = load_to_redshift_complex()
     process_apt_real_estate = process_apt_real_estate()
     process_apt_real_estate_detail = process_apt_real_estate_detail()
-    real_estate_transform = process_apt_real_estate_transform()
+    transform_apt_real_estate = transform_apt_real_estate()
     load_to_redshift_real_estate = load_to_redshift_real_estate()
     upload_to_s3_new_realtor = upload_to_s3_new_realtor()
     load_to_redshift_realtor = load_to_redshift_realtor()
@@ -511,7 +544,7 @@ def naver_apt_real_estate():
     is_check_apt_complex >> [process_apt_complex_detail_task, skip_task]
     process_apt_complex_detail_task >> load_to_redshift_complex_task >> process_apt_real_estate
     skip_task >> process_apt_real_estate
-    process_apt_real_estate >> process_apt_real_estate_detail >> real_estate_transform >> load_to_redshift_real_estate
+    process_apt_real_estate >> process_apt_real_estate_detail >> transform_apt_real_estate >> load_to_redshift_real_estate
     process_apt_real_estate_detail >> upload_to_s3_new_realtor >> load_to_redshift_realtor
 
 
