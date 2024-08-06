@@ -367,8 +367,6 @@ def naver_apt_real_estate():
             articleFacility = apt_detail_info.get('articleFacility', {})
 
             # 아파트 매물 테이블에 컬럼값 추가
-            real_estate_df.loc[idx, 'supply_area'] = real_estate_df['area1']
-            real_estate_df.loc[idx, 'exclusive_area'] = real_estate_df['area2']
             real_estate_df.loc[idx, 'articleName'] = articleDetail.get('articleName')
             real_estate_df.loc[idx, 'detailAddress'] = articleDetail.get('detailAddress', '')
             real_estate_df.loc[idx, 'exposureAddress'] = articleDetail.get('exposureAddress', '')
@@ -445,8 +443,9 @@ def naver_apt_real_estate():
         clean_numeric_column(real_estate_df, 'warrantPrice')
         clean_numeric_column(real_estate_df, 'rentPrice')
 
-        real_estate_df['supply_area'] = real_estate_df['supply_area'].fillna(0).astype(int)
-        real_estate_df['exclusive_area'] = real_estate_df['exclusive_area'].fillna(0).astype(int)
+        real_estate_df['walkingTimeToNearSubway'] = real_estate_df['walkingTimeToNearSubway'].fillna(0).astype(int)
+        real_estate_df['supply_area'] = real_estate_df['area1'].fillna(0).astype(int)
+        real_estate_df['exclusive_area'] = real_estate_df['area2'].fillna(0).astype(int)
         real_estate_df['parkingCount'] = real_estate_df['parkingCount'].fillna(0).astype(int)
         real_estate_df['roomCount'] = real_estate_df['roomCount'].fillna(0).astype(int)
         real_estate_df['bathroomCount'] = real_estate_df['bathroomCount'].fillna(0).astype(int)
@@ -466,17 +465,17 @@ def naver_apt_real_estate():
                            'heatFuelTypeName', 'created_at', 'updated_at',
                            ]
         real_estate_df = real_estate_df[desired_columns]
-
-        upload_to_s3(bucket_name, today_real_estate_file_name, real_estate_df)
+        today_transform_file_name = get_today_file_name('transform_' + real_estate_file_name)
+        upload_to_s3(bucket_name, today_transform_file_name, real_estate_df)
 
     # 새로운 매물 redshift 적재
     @task
     def load_to_redshift_real_estate():
-        today_real_estate_file_name = get_today_file_name(real_estate_file_name)
+        today_transform_file_name = get_today_file_name('transform_' + real_estate_file_name)
         cur = get_redshift_connection()
         cur.execute(f"""
                     COPY {schema}.naver_real_estate
-                    FROM 's3://team-ariel-2-data/data/{today_real_estate_file_name}'
+                    FROM 's3://team-ariel-2-data/data/{today_transform_file_name}'
                     IAM_ROLE '{iam_role}'
                     CSV
                     IGNOREHEADER 1;""")
