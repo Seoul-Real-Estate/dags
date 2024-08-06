@@ -33,3 +33,6 @@ jobs:
 
     - name: Sync DAG files to S3
       run: aws s3 sync dags/ s3://team-ariel-2-dags/dags/ --delete
+
+    - name: Sync plugins files to S3
+      run: aws s3 sync plugins/ s3://team-ariel-2-plugins/plugins/ --delete
