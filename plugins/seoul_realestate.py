@@ -532,16 +532,15 @@ class realestate:
         if '계약갱신권사용여부' in beforedf.columns and '계약갱신권사용여부' in afterdf.columns:
             beforedf['계약갱신권사용여부'] = beforedf['계약갱신권사용여부'].astype(str).fillna('')
             afterdf['계약갱신권사용여부'] = afterdf['계약갱신권사용여부'].astype(str).fillna('')
-            
+        
+            # '취소일' 컬럼 데이터 타입 일치시킴
+        if '취소일' in beforedf.columns and '취소일' in afterdf.columns:
+            beforedf['취소일'] = pd.to_datetime(beforedf['취소일'], errors='coerce')
+            afterdf['취소일'] = pd.to_datetime(afterdf['취소일'], errors='coerce')
 
         
         newdf = pd.merge(beforedf, afterdf, how='outer', indicator=True).query('_merge == "right_only"').drop(columns=['_merge'])
         coordinates = newdf["주소"].map(self.get_lat_lng)
-
-                # 좌표의 길이와 newdf의 길이가 일치하는지 확인
-        if len(coordinates) != len(newdf):
-            raise ValueError("Coordinates length does not match newdf length")
-        
         newdf[["위도", "경도"]] = pd.DataFrame(coordinates.tolist(), index = newdf.index)
         findf = newdf[fincols]
         return findf
