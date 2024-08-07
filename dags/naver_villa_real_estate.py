@@ -9,6 +9,25 @@ from airflow.models import Variable
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.providers.amazon.aws.hooks.redshift_sql import RedshiftSQLHook
 
+SCHEMA = 'raw_data'
+BUCKET_NAME = 'team-ariel-2-data'
+VILLA_URL = "https://new.land.naver.com/api/articles"
+REGION_URL = "https://new.land.naver.com/api/regions/list?cortarNo="
+SEOUL_CORTARNO = 1100000000
+SI_GUN_GU_FILE_NAME = 'si_gun_gu.csv'
+EUP_MYEON_DONG_FILE_NAME = 'eup_myeon_dong.csv'
+VILLA_FILE_NAME = 'naver_villa_real_estate.csv'
+REALTOR_FILE_NAME = 'naver_villa_realtor.csv'
+BASE_HEADERS = {
+    "Accept-Encoding": "gzip",
+    "Host": "new.land.naver.com",
+    "Referer": "https://new.land.naver.com/complexes/102378?ms=37.5018495,127.0438028,16&a=APT&b=A1&e=RETAIL",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin",
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+}
+
 default_args = {
     'owner': 'yong',
     'depends_on_past': False,
@@ -61,7 +80,6 @@ def upload_to_s3(bucket_name, file_name, data_frame):
 
 # 법정동 코드로 해당 동네 빌라/주택 매물 리스트 검색
 def get_villa_real_estate(headers, cortarNo):
-    url = "https://new.land.naver.com/api/articles"
     params = {
         "cortarNo": int(cortarNo),
         "order": "rank",
@@ -90,7 +108,7 @@ def get_villa_real_estate(headers, cortarNo):
     headers = headers.copy()
     naver_token = Variable.get('naver_token')
     headers.update({"Authorization": f"{naver_token}"})
-    res = requests.get(url, params=params, headers=headers)
+    res = requests.get(VILLA_URL, params=params, headers=headers)
     _json = res.json()
     return pd.DataFrame(_json["articleList"])
 
@@ -120,7 +138,7 @@ def get_today_file_name(file_name):
 
 # 빌라 매물 상세정보 가져오기 (공인중개사 포함)
 def get_villa_real_estate_detail(headers, articleNo):
-    url = f"https://new.land.naver.com/api/articles/{articleNo}"
+    url = VILLA_URL + f"/{articleNo}"
     params = {"complexNo": ""}
     headers = headers.copy()
     naver_token = Variable.get('naver_token')
@@ -142,49 +160,31 @@ def clean_numeric_column(df, column_name):
     tags=['daily', 'real_estate', 'naver', 'villa']
 )
 def naver_villa_real_estate():
-    schema = 'raw_data'
-    headers = {
-        "Accept-Encoding": "gzip",
-        "Host": "new.land.naver.com",
-        "Referer": "https://new.land.naver.com/complexes/102378?ms=37.5018495,127.0438028,16&a=APT&b=A1&e=RETAIL",
-        "Sec-Fetch-Dest": "empty",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "same-origin",
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
-    }
-    seoul_cortarNo = 1100000000
-    bucket_name = 'team-ariel-2-data'
-    si_gun_gu_file_name = 'si_gun_gu.csv'
-    eup_myeon_dong_file_name = 'eup_myeon_dong.csv'
-    villa_file_name = 'naver_villa_real_estate.csv'
-    realtor_file_name = 'naver_villa_realtor.csv'
-    base_url = "https://new.land.naver.com/api/regions/list?cortarNo="
-
     @task_group(group_id='fetch_and_process_region_data')
     def process_region():
         # 1. 시/군/구 정보 검색 API
         @task
         def process_si_gun_gu():
-            if is_check_s3_file_exists(bucket_name, si_gun_gu_file_name):
+            if is_check_s3_file_exists(BUCKET_NAME, SI_GUN_GU_FILE_NAME):
                 return
 
-            df = get_region_info(base_url, headers, seoul_cortarNo)
-            upload_to_s3(bucket_name, si_gun_gu_file_name, df)
+            df = get_region_info(REGION_URL, BASE_HEADERS, SEOUL_CORTARNO)
+            upload_to_s3(BUCKET_NAME, SI_GUN_GU_FILE_NAME, df)
 
         # 2. 읍/면/동 정보 검색 API
         @task
         def process_eup_myeon_dong():
-            if is_check_s3_file_exists(bucket_name, eup_myeon_dong_file_name):
+            if is_check_s3_file_exists(BUCKET_NAME, EUP_MYEON_DONG_FILE_NAME):
                 return
 
             eup_myeon_dong_df_list = []
-            si_gun_gu_df = get_csv_from_s3(bucket_name, si_gun_gu_file_name)
+            si_gun_gu_df = get_csv_from_s3(BUCKET_NAME, SI_GUN_GU_FILE_NAME)
             for cortarNo in si_gun_gu_df['cortarNo']:
-                eup_myeon_dong_df = get_region_info(base_url, headers, cortarNo)
+                eup_myeon_dong_df = get_region_info(REGION_URL, BASE_HEADERS, cortarNo)
                 eup_myeon_dong_df_list.append(eup_myeon_dong_df)
 
             eup_myeon_dong_df = pd.concat(eup_myeon_dong_df_list, ignore_index=True)
-            upload_to_s3(bucket_name, eup_myeon_dong_file_name, eup_myeon_dong_df)
+            upload_to_s3(BUCKET_NAME, EUP_MYEON_DONG_FILE_NAME, eup_myeon_dong_df)
 
         process_si_gun_gu() >> process_eup_myeon_dong()
 
@@ -193,36 +193,36 @@ def naver_villa_real_estate():
         # 3. 동마다 빌라/주택 매물 리스트 검색
         @task
         def process_villa_real_estate():
-            dong_df = get_csv_from_s3(bucket_name, eup_myeon_dong_file_name)
+            dong_df = get_csv_from_s3(BUCKET_NAME, EUP_MYEON_DONG_FILE_NAME)
             villa_df_list = []
 
             for cortarNo in dong_df['cortarNo']:
-                villa_df = get_villa_real_estate(headers, cortarNo)
+                villa_df = get_villa_real_estate(BASE_HEADERS, cortarNo)
                 villa_df_list.append(villa_df)
 
             villa_df = pd.concat(villa_df_list, ignore_index=True)
-            today_villa_file_name = get_today_file_name(villa_file_name)
-            upload_to_s3(bucket_name, today_villa_file_name, villa_df)
+            today_villa_file_name = get_today_file_name(VILLA_FILE_NAME)
+            upload_to_s3(BUCKET_NAME, today_villa_file_name, villa_df)
 
         # 4. 빌라/주택 새로운 매물만 추출
         @task.short_circuit
         def extract_new_villa():
-            today_villa_file_name = get_today_file_name(villa_file_name)
-            villa_df = get_csv_from_s3(bucket_name, today_villa_file_name)
-            article_numbers = get_naver_real_estate_pk(schema)
+            today_villa_file_name = get_today_file_name(VILLA_FILE_NAME)
+            villa_df = get_csv_from_s3(BUCKET_NAME, today_villa_file_name)
+            article_numbers = get_naver_real_estate_pk(SCHEMA)
             new_villa_df = villa_df[~villa_df['articleNo'].isin(article_numbers)]
 
             if new_villa_df.empty:
                 return False
 
-            upload_to_s3(bucket_name, today_villa_file_name, new_villa_df)
+            upload_to_s3(BUCKET_NAME, today_villa_file_name, new_villa_df)
             return True
 
         # 5. 빌라/주택 상세정보 검색
         @task
         def process_villa_real_estate_detail():
-            today_villa_file_name = get_today_file_name(villa_file_name)
-            villa_df = get_csv_from_s3(bucket_name, today_villa_file_name)
+            today_villa_file_name = get_today_file_name(VILLA_FILE_NAME)
+            villa_df = get_csv_from_s3(BUCKET_NAME, today_villa_file_name)
             realtor_infos = []
 
             # 필요한 열 추가
@@ -241,7 +241,7 @@ def naver_villa_real_estate():
                     villa_df[column] = None
 
             for idx, row in villa_df.iterrows():
-                villa_detail_info = get_villa_real_estate_detail(headers, row['articleNo'])
+                villa_detail_info = get_villa_real_estate_detail(BASE_HEADERS, row['articleNo'])
                 articleDetail = villa_detail_info.get('articleDetail', {})
                 articlePrice = villa_detail_info.get('articlePrice', {})
                 articleFloor = villa_detail_info.get('articleFloor', {})
@@ -292,20 +292,20 @@ def naver_villa_real_estate():
                 # 공인중개사 값 추가
                 realtor_infos.append(articleRealtor)
 
-            upload_to_s3(bucket_name, today_villa_file_name, villa_df)
+            upload_to_s3(BUCKET_NAME, today_villa_file_name, villa_df)
 
             realtor_df = pd.DataFrame(realtor_infos)
             realtor_df = realtor_df.drop_duplicates(subset='realtorId')
-            today_realtor_file_name = get_today_file_name(realtor_file_name)
-            upload_to_s3(bucket_name, today_realtor_file_name, realtor_df)
+            today_realtor_file_name = get_today_file_name(REALTOR_FILE_NAME)
+            upload_to_s3(BUCKET_NAME, today_realtor_file_name, realtor_df)
 
         process_villa_real_estate() >> extract_new_villa() >> process_villa_real_estate_detail()
 
     # 6. 빌라/주택 전처리
     @task
     def transform_villa_real_estate():
-        today_villa_file_name = get_today_file_name(villa_file_name)
-        villa_df = get_csv_from_s3(bucket_name, today_villa_file_name)
+        today_villa_file_name = get_today_file_name(VILLA_FILE_NAME)
+        villa_df = get_csv_from_s3(BUCKET_NAME, today_villa_file_name)
 
         # 정수형 필드에 문자열이 올 경우 NaN 변환
         clean_numeric_column(villa_df, 'roomCount')
@@ -337,41 +337,41 @@ def naver_villa_real_estate():
                            'heatFuelTypeName', 'created_at', 'updated_at',
                            ]
         villa_df = villa_df[desired_columns]
-        today_transform_villa_file_name = get_today_file_name('transform_' + villa_file_name)
-        upload_to_s3(bucket_name, today_transform_villa_file_name, villa_df)
+        today_transform_villa_file_name = get_today_file_name('transform_' + VILLA_FILE_NAME)
+        upload_to_s3(BUCKET_NAME, today_transform_villa_file_name, villa_df)
 
     # 7. 빌라/주택 redshift 적재
     @task
     def load_to_redshift_villa():
-        today_transform_villa_file_name = get_today_file_name('transform_' + villa_file_name)
+        today_transform_villa_file_name = get_today_file_name('transform_' + VILLA_FILE_NAME)
         cur = get_redshift_connection()
         cur.execute(f"""
-                    COPY {schema}.naver_real_estate
+                    COPY {SCHEMA}.naver_real_estate
                     FROM 's3://team-ariel-2-data/data/{today_transform_villa_file_name}'
                     IAM_ROLE '{iam_role}'
                     CSV 
                     IGNOREHEADER 1;""")
         cur.close()
-        logging.info(f'Data successfully loaded into {schema}.naver_real_estate')
+        logging.info(f'Data successfully loaded into {SCHEMA}.naver_real_estate')
 
     # 8. 새로운 공인중개사 추출
     @task.short_circuit
     def extract_new_realtor():
-        today_realtor_file_name = get_today_file_name(realtor_file_name)
-        realtor_df = get_csv_from_s3(bucket_name, today_realtor_file_name)
-        realtor_ids = get_naver_realtor_pk(schema)
+        today_realtor_file_name = get_today_file_name(REALTOR_FILE_NAME)
+        realtor_df = get_csv_from_s3(BUCKET_NAME, today_realtor_file_name)
+        realtor_ids = get_naver_realtor_pk(SCHEMA)
         new_realtor_df = realtor_df[~realtor_df['realtorId'].isin(realtor_ids)]
         if new_realtor_df.empty:
             return False
 
-        upload_to_s3(bucket_name, today_realtor_file_name, new_realtor_df)
+        upload_to_s3(BUCKET_NAME, today_realtor_file_name, new_realtor_df)
         return True
 
     # 9. 공인중개사 전처리
     @task
     def transform_realtor():
-        today_realtor_file_name = get_today_file_name(realtor_file_name)
-        realtor_df = get_csv_from_s3(bucket_name, today_realtor_file_name)
+        today_realtor_file_name = get_today_file_name(REALTOR_FILE_NAME)
+        realtor_df = get_csv_from_s3(BUCKET_NAME, today_realtor_file_name)
         desired_columns = ['realtorId', 'realtorName', 'representativeName', 'address', 'establishRegistrationNo',
                            'dealCount', 'leaseCount', 'rentCount', 'latitude', 'longitude', 'representativeTelNo',
                            'cellPhoneNo', 'cortarNo']
@@ -382,22 +382,22 @@ def naver_villa_real_estate():
         realtor_df['rentCount'] = realtor_df['rentCount'].fillna(0).astype(int)
         realtor_df['created_at'] = datetime.now()
         realtor_df['updated_at'] = datetime.now()
-        today_transform_realtor_file_name = get_today_file_name('transform_' + realtor_file_name)
-        upload_to_s3(bucket_name, today_transform_realtor_file_name, realtor_df)
+        today_transform_realtor_file_name = get_today_file_name('transform_' + REALTOR_FILE_NAME)
+        upload_to_s3(BUCKET_NAME, today_transform_realtor_file_name, realtor_df)
 
     # 10. 공인중개사 redshift 적재
     @task
     def load_to_redshift_realtor():
-        today_transform_realtor_file_name = get_today_file_name('transform_' + realtor_file_name)
+        today_transform_realtor_file_name = get_today_file_name('transform_' + REALTOR_FILE_NAME)
         cur = get_redshift_connection()
         cur.execute(f"""
-                    COPY {schema}.naver_realtor
+                    COPY {SCHEMA}.naver_realtor
                     FROM 's3://team-ariel-2-data/data/{today_transform_realtor_file_name}'
                     IAM_ROLE '{iam_role}'
                     CSV 
                     IGNOREHEADER 1;""")
         cur.close()
-        logging.info(f'Data successfully loaded into {schema}.naver_realtor')
+        logging.info(f'Data successfully loaded into {SCHEMA}.naver_realtor')
 
     region = process_region()
     process_villa = process_villa()
