@@ -528,15 +528,20 @@ class realestate:
             return None, None
 
     def compare_add_latlon(self, beforedf, afterdf, fincols):
-            # '계약갱신권사용여부' 컬럼의 데이터 타입을 일치시킴 - poounghoon 작성
+        # '계약갱신권사용여부' 컬럼의 데이터 타입을 일치시킴 - poounghoon 작성
         if '계약갱신권사용여부' in beforedf.columns and '계약갱신권사용여부' in afterdf.columns:
             beforedf['계약갱신권사용여부'] = beforedf['계약갱신권사용여부'].astype(str).fillna('')
             afterdf['계약갱신권사용여부'] = afterdf['계약갱신권사용여부'].astype(str).fillna('')
         
-            # '취소일' 컬럼 데이터 타입 일치시킴
+        # '취소일' 컬럼 데이터 타입 일치시킴
         if '취소일' in beforedf.columns and '취소일' in afterdf.columns:
             beforedf['취소일'] = pd.to_datetime(beforedf['취소일'], errors='coerce')
             afterdf['취소일'] = pd.to_datetime(afterdf['취소일'], errors='coerce')
+
+        # '등기일자' 컬럼 데이터 타입 일치시킴
+        if '등기일자' in beforedf.columns and '등기일자' in afterdf.columns:
+            beforedf['등기일자'] = pd.to_datetime(beforedf['등기일자'].astype(str), errors='coerce')
+            afterdf['등기일자'] = pd.to_datetime(afterdf['등기일자'].astype(str), errors='coerce')
 
         
         newdf = pd.merge(beforedf, afterdf, how='outer', indicator=True).query('_merge == "right_only"').drop(columns=['_merge'])
