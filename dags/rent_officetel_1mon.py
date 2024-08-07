@@ -109,8 +109,7 @@ def officetel_rent_load(schema, table, upload_fname, credentials):
 with DAG(
     dag_id='rent_officetel_1mon',
     start_date=datetime(2024, 7, 24),
-    timezone='Asia/Seoul',  # 한국 표준시(KST) 설정
-    schedule='45 10 * * *',  # 매일 09:50 AM KST에 실행
+    schedule_interval='40 10 * * *',
     max_active_runs=1,
     catchup=False, 
     default_args={

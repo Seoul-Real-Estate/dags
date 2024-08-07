@@ -110,8 +110,7 @@ def house_trade_load(schema, table, upload_fname, credentials):
 with DAG(
     dag_id='trade_house_2mon',
     start_date=datetime(2024, 7, 24),
-    timezone='Asia/Seoul',  # 한국 표준시(KST) 설정
-    schedule='35 11 * * *',  # 매일 09:50 AM KST에 실행
+    schedule_interval='30 11 * * *',
     max_active_runs=1,
     catchup=False, 
     default_args={
