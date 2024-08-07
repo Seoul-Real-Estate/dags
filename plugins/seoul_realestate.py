@@ -528,6 +528,12 @@ class realestate:
             return None, None
 
     def compare_add_latlon(self, beforedf, afterdf, fincols):
+            # '계약갱신권사용여부' 컬럼의 데이터 타입을 일치시킴 - poounghoon 작성
+        if '계약갱신권사용여부' in beforedf.columns and '계약갱신권사용여부' in afterdf.columns:
+            beforedf['계약갱신권사용여부'] = beforedf['계약갱신권사용여부'].astype(str)
+            afterdf['계약갱신권사용여부'] = afterdf['계약갱신권사용여부'].astype(str)
+
+
         newdf = pd.merge(beforedf, afterdf, how='outer', indicator=True).query('_merge == "right_only"').drop(columns=['_merge'])
         coordinates = newdf["주소"].map(self.get_lat_lng)
         newdf[["위도", "경도"]] = pd.DataFrame(coordinates.tolist(), index = newdf.index)
