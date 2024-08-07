@@ -160,7 +160,7 @@ def naver_villa_real_estate():
     realtor_file_name = 'naver_villa_realtor.csv'
     base_url = "https://new.land.naver.com/api/regions/list?cortarNo="
 
-    @task_group(group_id='process_region')
+    @task_group(group_id='fetch_and_process_region_data')
     def process_region():
         # 1. 시/군/구 정보 검색 API
         @task
@@ -188,7 +188,7 @@ def naver_villa_real_estate():
 
         process_si_gun_gu() >> process_eup_myeon_dong()
 
-    @task_group(group_id='process_villa')
+    @task_group(group_id='fetch_and_process_villa_data')
     def process_villa():
         # 3. 동마다 빌라/주택 매물 리스트 검색
         @task
