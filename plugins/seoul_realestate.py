@@ -533,8 +533,10 @@ class realestate:
             beforedf['계약갱신권사용여부'] = beforedf['계약갱신권사용여부'].astype(str).fillna('')
             afterdf['계약갱신권사용여부'] = afterdf['계약갱신권사용여부'].astype(str).fillna('')
             
-
-
+                # 좌표의 길이와 newdf의 길이가 일치하는지 확인
+        if len(coordinates) != len(newdf):
+            raise ValueError("Coordinates length does not match newdf length")
+        
         newdf = pd.merge(beforedf, afterdf, how='outer', indicator=True).query('_merge == "right_only"').drop(columns=['_merge'])
         coordinates = newdf["주소"].map(self.get_lat_lng)
         newdf[["위도", "경도"]] = pd.DataFrame(coordinates.tolist(), index = newdf.index)
