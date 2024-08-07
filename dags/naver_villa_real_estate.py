@@ -56,9 +56,13 @@ def is_check_s3_file_exists(bucket_name, file_name):
 
 # s3의 data/ 폴더의 file_name CSV 파일 가져오기
 def get_csv_from_s3(bucket_name, file_name):
-    s3_hook = S3Hook(aws_conn_id='aws_s3_connection')
-    key = 'data/' + file_name
-    return pd.read_csv(s3_hook.get_key(key=key, bucket_name=bucket_name).get()['Body'])
+    try:
+        s3_hook = S3Hook(aws_conn_id='aws_s3_connection')
+        key = 'data/' + file_name
+        return pd.read_csv(s3_hook.get_key(key=key, bucket_name=bucket_name).get()['Body'])
+    except Exception as e:
+        logging.error(f"Error in get_csv_from_s3: {e}")
+        raise
 
 
 # 법정동코드(cortarNo) 지역의 동네 리스트를 데이터프레임으로 가져오기
@@ -71,11 +75,15 @@ def get_region_info(url, headers, cortarNo):
 
 # 데이터프레임을 S3에 CSV파일로 업로드
 def upload_to_s3(bucket_name, file_name, data_frame):
-    s3_hook = S3Hook(aws_conn_id='aws_s3_connection')
-    csv_buffer = StringIO()
-    key = 'data/' + file_name
-    data_frame.to_csv(csv_buffer, index=False)
-    s3_hook.load_string(string_data=csv_buffer.getvalue(), key=key, bucket_name=bucket_name, replace=True)
+    try:
+        s3_hook = S3Hook(aws_conn_id='aws_s3_connection')
+        csv_buffer = StringIO()
+        key = 'data/' + file_name
+        data_frame.to_csv(csv_buffer, index=False)
+        s3_hook.load_string(string_data=csv_buffer.getvalue(), key=key, bucket_name=bucket_name, replace=True)
+    except Exception as e:
+        logging.error(f"Error in upload_to_s3: {e}")
+        raise
 
 
 # 법정동 코드로 해당 동네 빌라/주택 매물 리스트 검색
@@ -304,25 +312,29 @@ def naver_villa_real_estate():
     # 6. 빌라/주택 전처리
     @task
     def transform_villa_real_estate():
-        today_villa_file_name = get_today_file_name(VILLA_FILE_NAME)
-        villa_df = get_csv_from_s3(BUCKET_NAME, today_villa_file_name)
+        try:
+            today_villa_file_name = get_today_file_name(VILLA_FILE_NAME)
+            villa_df = get_csv_from_s3(BUCKET_NAME, today_villa_file_name)
 
-        # 정수형 필드에 문자열이 올 경우 NaN 변환
-        clean_numeric_column(villa_df, 'roomCount')
-        clean_numeric_column(villa_df, 'bathroomCount')
-        clean_numeric_column(villa_df, 'dealPrice')
-        clean_numeric_column(villa_df, 'warrantPrice')
-        clean_numeric_column(villa_df, 'rentPrice')
+            # 정수형 필드에 문자열이 올 경우 NaN 변환
+            clean_numeric_column(villa_df, 'roomCount')
+            clean_numeric_column(villa_df, 'bathroomCount')
+            clean_numeric_column(villa_df, 'dealPrice')
+            clean_numeric_column(villa_df, 'warrantPrice')
+            clean_numeric_column(villa_df, 'rentPrice')
 
-        villa_df.loc[:, 'rentPrc'] = villa_df['rentPrc'].fillna(0)
-        villa_df['supply_area'] = villa_df['area1'].fillna(0).astype(int)
-        villa_df['exclusive_area'] = villa_df['area2'].fillna(0).astype(int)
-        villa_df['parkingCount'] = villa_df['parkingCount'].fillna(0).astype(int)
-        villa_df['roomCount'] = villa_df['roomCount'].fillna(0).astype(int)
-        villa_df['bathroomCount'] = villa_df['bathroomCount'].fillna(0).astype(int)
-        villa_df['walkingTimeToNearSubway'] = villa_df['walkingTimeToNearSubway'].fillna(0).astype(int)
-        villa_df['created_at'] = datetime.now()
-        villa_df['updated_at'] = datetime.now()
+            villa_df.loc[:, 'rentPrc'] = villa_df['rentPrc'].fillna(0)
+            villa_df['supply_area'] = villa_df['area1'].fillna(0).astype(int)
+            villa_df['exclusive_area'] = villa_df['area2'].fillna(0).astype(int)
+            villa_df['parkingCount'] = villa_df['parkingCount'].fillna(0).astype(int)
+            villa_df['roomCount'] = villa_df['roomCount'].fillna(0).astype(int)
+            villa_df['bathroomCount'] = villa_df['bathroomCount'].fillna(0).astype(int)
+            villa_df['walkingTimeToNearSubway'] = villa_df['walkingTimeToNearSubway'].fillna(0).astype(int)
+            villa_df['created_at'] = datetime.now()
+            villa_df['updated_at'] = datetime.now()
+        except Exception as e:
+            logging.error(f"Error in transform_villa_real_estate: {e}")
+            raise
 
         # 컬럼 순서 맞추기
         desired_columns = ['articleNo', 'realtorId', 'complexNo', 'articleName', 'realEstateTypeName', 'tradeTypeName',
