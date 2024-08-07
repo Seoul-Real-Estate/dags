@@ -88,8 +88,8 @@ def get_villa_real_estate(headers, cortarNo):
         "articleState": ""
     }
     headers = headers.copy()
-    headers.update({
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IlJFQUxFU1RBVEUiLCJpYXQiOjE3MjA1MjY2NTEsImV4cCI6MTcyMDUzNzQ1MX0.UOUEwVmXdYY-wjtxtmkYQaEOcgU0SBaCaSk5bC7ihpE"})
+    naver_token = Variable.get('naver_token')
+    headers.update({"Authorization": f"{naver_token}"})
     res = requests.get(url, params=params, headers=headers)
     _json = res.json()
     return pd.DataFrame(_json["articleList"])
@@ -123,8 +123,8 @@ def get_villa_real_estate_detail(headers, articleNo):
     url = f"https://new.land.naver.com/api/articles/{articleNo}"
     params = {"complexNo": ""}
     headers = headers.copy()
-    headers.update({
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IlJFQUxFU1RBVEUiLCJpYXQiOjE3MjA1MjY2NTEsImV4cCI6MTcyMDUzNzQ1MX0.UOUEwVmXdYY-wjtxtmkYQaEOcgU0SBaCaSk5bC7ihpE"})
+    naver_token = Variable.get('naver_token')
+    headers.update({"Authorization": f"{naver_token}"})
     return requests.get(url, params=params, headers=headers).json()
 
 
