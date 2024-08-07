@@ -537,12 +537,6 @@ class realestate:
         if '취소일' in beforedf.columns and '취소일' in afterdf.columns:
             beforedf['취소일'] = pd.to_datetime(beforedf['취소일'], errors='coerce')
             afterdf['취소일'] = pd.to_datetime(afterdf['취소일'], errors='coerce')
-
-        # '등기일자' 컬럼 데이터 타입 일치시킴
-        if '등기일자' in beforedf.columns and '등기일자' in afterdf.columns:
-            beforedf['등기일자'] = pd.to_datetime(beforedf['등기일자'].astype(str), errors='coerce')
-            afterdf['등기일자'] = pd.to_datetime(afterdf['등기일자'].astype(str), errors='coerce')
-
         
         newdf = pd.merge(beforedf, afterdf, how='outer', indicator=True).query('_merge == "right_only"').drop(columns=['_merge'])
         coordinates = newdf["주소"].map(self.get_lat_lng)

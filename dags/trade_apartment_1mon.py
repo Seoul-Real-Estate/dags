@@ -62,6 +62,10 @@ def apartment_trade_compare(reclass, before_fname, now_fname, columns):
     csv_buffer = StringIO(file_content)
     now_df = pd.read_csv(csv_buffer, header=0)
 
+    # 데이터 타입 변환
+    before_df['등기일자'] = before_df['등기일자'].astype(str)
+    now_df['등기일자'] = now_df['등기일자'].astype(str)
+
     new_df = reclass.compare_add_latlon(before_df, now_df, columns)
     return new_df
 
