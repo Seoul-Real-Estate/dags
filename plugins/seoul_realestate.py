@@ -533,11 +533,6 @@ class realestate:
             beforedf['계약갱신권사용여부'] = beforedf['계약갱신권사용여부'].astype(str).fillna('')
             afterdf['계약갱신권사용여부'] = afterdf['계약갱신권사용여부'].astype(str).fillna('')
         
-        # '취소일' 컬럼 데이터 타입 일치시킴
-        if '취소일' in beforedf.columns and '취소일' in afterdf.columns:
-            beforedf['취소일'] = pd.to_datetime(beforedf['취소일'], errors='coerce')
-            afterdf['취소일'] = pd.to_datetime(afterdf['취소일'], errors='coerce')
-        
         newdf = pd.merge(beforedf, afterdf, how='outer', indicator=True).query('_merge == "right_only"').drop(columns=['_merge'])
         coordinates = newdf["주소"].map(self.get_lat_lng)
         newdf[["위도", "경도"]] = pd.DataFrame(coordinates.tolist(), index = newdf.index)
