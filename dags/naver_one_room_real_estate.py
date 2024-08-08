@@ -33,8 +33,8 @@ default_args = {
     'depends_on_past': False,
     'email_on_failure': False,
     'email_on_retry': False,
-    'retries': 1,
-    'retry_delay': timedelta(seconds=30),
+    'retries': 3,
+    'retry_delay': timedelta(minutes=10),
 }
 
 iam_role = Variable.get('aws_iam_role')
@@ -257,7 +257,7 @@ def transform_one_room_df(one_room_df):
 @dag(
     default_args=default_args,
     description="네이버부동산 원룸/투룸 데이터 수집 및 적재 DAG",
-    schedule_interval='0 1 * * *',
+    schedule_interval='0 3 * * *',
     start_date=datetime(2024, 8, 5),
     catchup=False,
     tags=['daily', 'real_estate', 'naver', 'one_room']
