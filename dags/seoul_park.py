@@ -5,7 +5,6 @@ from airflow.models import Variable
 from datetime import datetime, timedelta
 import requests
 import psycopg2
-import time
 import logging
 
 # Redshift 연결 함수
@@ -21,33 +20,28 @@ def create_temp_table(schema, temp_table):
     cur = get_redshift_connection()
     create_query = f"""
     DROP TABLE IF EXISTS {schema}.{temp_table};
+
     CREATE TABLE {schema}.{temp_table} (
         id INT IDENTITY(1, 1) PRIMARY KEY,
+        park_name VARCHAR(100),
         district_name VARCHAR(50),
-        academy_code VARCHAR(50),
-        academy_name VARCHAR(100),
-        total_capacity INT,
-        category_name VARCHAR(100),
-        course_name VARCHAR(100),
-        postal_code VARCHAR(6),
-        road_address VARCHAR(255),
-        detailed_road_address VARCHAR(255),
+        address VARCHAR(255),
         latitude FLOAT,
         longitude FLOAT,
-        legal_dong_name VARCHAR(30)
+        legal_dong_name VARCHAR(50)
     );
     """
     cur.execute(create_query)
 
-# API 요청 응답 대한 전체 데이터의 개수를 반환하는 함수
+# API 요청에 대한 전체 데이터의 개수를 반환하는 함수
 def get_list_total_count():
     api_key = Variable.get('seoul_api_key')
-    url = f"http://openapi.seoul.go.kr:8088/{api_key}/json/neisAcademyInfo/1/1"
+    url = f"http://openapi.seoul.go.kr:8088/{api_key}/json/SearchParkInfoService/1/1"
     try:
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
-        total_count = data["neisAcademyInfo"]["list_total_count"]
+        total_count = data["SearchParkInfoService"]["list_total_count"]
         return total_count
     except requests.RequestException as error:
         logging.error(f"API request failed: {error}")
@@ -58,7 +52,7 @@ def get_list_total_count():
 def process_data():
     api_key = Variable.get('seoul_api_key')
     start_index = 1
-    unit_value=1000
+    unit_value = 1000  # 한 번에 1000개까지 가능
     records = []
 
     total_count = get_list_total_count()
@@ -66,23 +60,19 @@ def process_data():
     # unit_value 단위로 나누어 api 요청
     while start_index <= total_count:
         end_index = min(start_index + unit_value - 1, total_count)
-        url = f"http://openapi.seoul.go.kr:8088/{api_key}/json/neisAcademyInfo/{start_index}/{end_index}"
+        url = f"http://openapi.seoul.go.kr:8088/{api_key}/json/SearchParkInfoService/{start_index}/{end_index}"
         try:
             response = requests.get(url)
             response.raise_for_status()
-            data_list = response.json()["neisAcademyInfo"]["row"]
+            data_list = response.json()["SearchParkInfoService"]["row"]
             
             for data in data_list:
                 record = (
-                    data['ADMST_ZONE_NM'],
-                    data['ACA_ASNUM'],
-                    data['ACA_NM'],
-                    int(data['TOFOR_SMTOT']),
-                    data['REALM_SC_NM'],
-                    data['LE_CRSE_NM'],
-                    data['FA_RDNZC'],
-                    data['FA_RDNMA'],
-                    data['FA_RDNDA']
+                    data['P_PARK'],
+                    data['P_ZONE'],
+                    data['P_ADDR'],
+                    data['LATITUDE'],
+                    data['LONGITUDE']
                 )
                 records.append(record)
             
@@ -93,54 +83,33 @@ def process_data():
 
     return records
 
-# 위/경도 좌표값 추가하는 task
+# 법정동 데이터 추가하는 task
 @task
-def geocode(records):
+def add_dong_data(records):
     geocoded_records = []
     kakao_api_key = Variable.get('kakao_api_key')
 
     for record in records:
-        road_address = record[7]  # 주소값 'FA_RDNMA'
-        
-        # 기본값 설정 - 예외가 발생하면 아래의 기본값이 사용됨
-        latitude = None
-        longitude = None
-        legal_dong_name = None
-
-        if not road_address:
-            geocoded_records.append(list(record) + [latitude, longitude, legal_dong_name])
-            continue
-
-        # Kakao API를 사용하여 주소를 좌표로 변환
-        url = f'https://dapi.kakao.com/v2/local/search/address.json?query={road_address}&analyze_type=exact'
+        latitude = record[3]  
+        longitude = record[4]
+        url = f'https://dapi.kakao.com/v2/local/geo/coord2regioncode.json?x={longitude}&y={latitude}'
         headers = {"Authorization": kakao_api_key}
 
-        try:
-            response = requests.get(url, headers=headers)
-            response.raise_for_status()
-
-            # 주소 정보에서 좌표 정보 추출
-            documents = response.json().get('documents', [])
-
+        response = requests.get(url, headers=headers)
+        dong = None  # 기본값 설정 
+        if response.status_code == 200:
+            data = response.json()
             try:
-                latitude = round(float(documents[0]['y']), 6)
-                longitude = round(float(documents[0]['x']), 6)
-                legal_dong_name = documents[0]['road_address']['region_3depth_name']  # 법정동 
+                dong = data['documents'][0]['region_3depth_name']
             except (IndexError, KeyError, AttributeError, TypeError):
-                pass  # 기본값이 유지되도록 하고, 에러 무시
-
-            geocoded_record = list(record) + [latitude, longitude, legal_dong_name]
-            geocoded_records.append(tuple(geocoded_record))
-
-        except requests.RequestException as error:
-            logging.error(f"Error RequestException {road_address}: {error}")
-            raise
-
-        time.sleep(0.1) 
+                pass  # 기본값 유지
+            
+        geocoded_record = list(record) + [dong]
+        geocoded_records.append(tuple(geocoded_record))
 
     return geocoded_records
 
-# redshift 임시 테이블에 적재하는 task
+# 임시 테이블에 데이터를 적재하는 task
 @task
 def load_temp_table(schema, temp_table, records):
     cur = get_redshift_connection(False)
@@ -148,11 +117,8 @@ def load_temp_table(schema, temp_table, records):
         cur.execute("BEGIN;")
         insert_query = f"""
         INSERT INTO {schema}.{temp_table} (
-            district_name, academy_code, academy_name, 
-            total_capacity, category_name, course_name,
-            postal_code, road_address, detailed_road_address,
-            latitude, longitude, legal_dong_name
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            park_name, district_name, address, latitude, longitude, legal_dong_name
+        ) VALUES (%s, %s, %s, %s, %s, %s)
         """
         for record in records:
             cur.execute(insert_query, record)
@@ -177,9 +143,9 @@ def swap_tables(schema, temp_table, main_table):
         raise
 
 with DAG(
-    dag_id='seoul_academy_v2',
-    start_date=datetime(2024, 7, 10),
-        schedule_interval='0 1 * * 6',  # 한국 기준 토요일 오전 10시 실행 
+    dag_id='seoul_park',
+    start_date=datetime(2024, 7, 10),  
+    schedule_interval='0 1 * * 6',  # 한국 기준 토요일 오전 10시 실행 
     catchup=False,
     default_args={
         'retries': 1,
@@ -187,13 +153,13 @@ with DAG(
     }
 ) as dag:
     schema = 'raw_data'
-    temp_table = 'temp_seoul_academy'
-    main_table = 'seoul_academy'
+    temp_table = 'temp_seoul_park'
+    main_table = 'seoul_park'
 
     create_temp_table_task = create_temp_table(schema, temp_table)
-    process_data_task = process_data()  
-    geocode_task = geocode(process_data_task)
+    process_task = process_data()
+    geocode_task = add_dong_data(process_task)
     load_temp_table_task = load_temp_table(schema, temp_table, geocode_task)
     swap_tables_task = swap_tables(schema, temp_table, main_table)
 
-    create_temp_table_task >> process_data_task >> geocode_task >> load_temp_table_task >> swap_tables_task
+    create_temp_table_task >> process_task >> geocode_task >> load_temp_table_task >> swap_tables_task

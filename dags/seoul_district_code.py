@@ -48,10 +48,9 @@ def get_list_total_count():
 
 # 데이터 수집 task
 @task
-def process_data():
+def process_data(unit_value):
     api_key = Variable.get('seoul_api_key')
     start_index = 1 
-    unit_value = 1000  # 한 번에 1000건까지 가능
     records = []
 
     total_count = get_list_total_count()
@@ -105,7 +104,7 @@ def load(schema, table, records):
 with DAG(
     dag_id='seoul_district_code',
     start_date=datetime(2024, 7, 10),
-    schedule_interval='0 1 1 * *',  # 매월 1일 오전 1시에 실행
+    schedule_interval='0 1 1 * *',  # 한국 기준 매월 1일 오전 10시에 실행
     catchup=False,
     default_args={
         'retries': 1,  
@@ -116,7 +115,7 @@ with DAG(
     table = 'seoul_district_code'
 
     create_table_task = create_table(schema, table)
-    process_data_task = process_data()  
+    process_data_task = process_data(unit_value=1000)  # 한 번에 1000건까지 가능
     load_task = load(schema, table, process_data_task)
 
     create_table_task >> process_data_task >> load_task
