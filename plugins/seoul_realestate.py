@@ -549,6 +549,18 @@ class realestate:
         # 데이터프레임 병합 및 필터링
         newdf = pd.merge(beforedf, afterdf, how='outer', indicator=True).query('_merge == "right_only"').drop(columns=['_merge'])
         
+        # '주소' 열 상태 확인
+        print(f"Columns in newdf: {newdf.columns}")
+        print(f"Sample data in '주소' column of newdf: {newdf['주소'].head()}")
+        print(f"Number of null values in '주소' column: {newdf['주소'].isnull().sum()}")
+        
+        # '주소' 열의 데이터 상태를 확인하기 위한 예시
+        print("Sample data in '주소' column of beforedf:")
+        print(beforedf['주소'].head())
+        
+        print("Sample data in '주소' column of afterdf:")
+        print(afterdf['주소'].head())
+        
         # '주소' 열이 비어 있는지 확인
         if newdf["주소"].isnull().all():
             raise ValueError("The '주소' column in the new DataFrame is empty or contains null values.")
@@ -557,13 +569,15 @@ class realestate:
         coordinates = newdf["주소"].map(self.get_lat_lng)
         
         # 좌표 데이터 디버깅
-        print(f"Coordinates output: {coordinates.head()}")  # 좌표 데이터 확인
+        print(f"Coordinates output: {coordinates.head()}")
         
         # 좌표가 비어 있는지 확인
         if coordinates.isnull().all():
             raise ValueError("All coordinates are missing. Check the input data and get_lat_lng function.")
         
-        coordinates_df = pd.DataFrame(coordinates.tolist(), index=newdf.index)
+        # 좌표 데이터프레임 생성
+        coordinates_df = pd.DataFrame(coordinates.tolist(), index=newdf.index, columns=["위도", "경도"])
+        
         # 좌표 데이터프레임의 열 개수 확인
         if coordinates_df.shape[1] != 2:
             raise ValueError("Coordinates DataFrame should have exactly 2 columns: 위도 and 경도")
