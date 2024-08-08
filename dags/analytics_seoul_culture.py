@@ -89,7 +89,7 @@ def replace_table(table):
 with DAG(
     dag_id='analytics_seoul_culture',
     start_date=datetime(2024, 8, 1),
-    schedule_interval='0 19 * * 0',  # 한국 기준 매주 월요일 새벽 4시
+    schedule_interval='0 4 * * 6',  # 한국 기준 매주 토요일 낮 1시
     catchup=False
 ) as dag:
     table = 'seoul_culture'
