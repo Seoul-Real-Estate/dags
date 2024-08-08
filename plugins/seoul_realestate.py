@@ -570,7 +570,6 @@ class realestate:
         if coordinates_df.shape[1] != 2:
             raise ValueError("Coordinates DataFrame should have exactly 2 columns: 위도 and 경도")
         
-        # 좌표 데이터프레임을 원본 데이터프레임에 추가
         newdf[["위도", "경도"]] = coordinates_df
         findf = newdf[fincols]
         return findf
