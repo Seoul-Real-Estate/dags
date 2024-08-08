@@ -70,7 +70,7 @@ def extract(**context):
     wait = WebDriverWait(driver, 20)
     button_1 = wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="btnCsv"]')))
     button_1.click()
-    print("Button 1 clicked successfully!")
+    logging.info("Button 1 clicked successfully!")
 
     time.sleep(10)
 
