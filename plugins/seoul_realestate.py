@@ -534,7 +534,6 @@ class realestate:
             beforedf['계약갱신권사용여부'] = beforedf['계약갱신권사용여부'].astype(str).fillna('')
             afterdf['계약갱신권사용여부'] = afterdf['계약갱신권사용여부'].astype(str).fillna('')
         
-        # 데이터프레임 병합 및 필터링
         newdf = pd.merge(beforedf, afterdf, how='outer', indicator=True).query('_merge == "right_only"').drop(columns=['_merge'])
         
         # '주소' 열 상태 확인
