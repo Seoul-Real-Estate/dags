@@ -546,13 +546,19 @@ class realestate:
             afterdf['계약갱신권사용여부'] = afterdf['계약갱신권사용여부'].astype(str).fillna('')
         
         newdf = pd.merge(beforedf, afterdf, how='outer', indicator=True).query('_merge == "right_only"').drop(columns=['_merge'])
+        # 데이터프레임 열 및 데이터 확인
+        print("Columns in newdf:", newdf.columns)
+        print("Sample data in '주소' column:", newdf["주소"].head())
+        
+        # 좌표 가져오기
         coordinates = newdf["주소"].map(self.get_lat_lng)
-
+        
         # 좌표 데이터 디버깅
-        print(f"Coordinates output: {coordinates.head()}")
-        # 좌표가 예상한 형태인지 확인
-        if coordinates.dropna().apply(lambda x: len(x) != 2).any():
-            raise ValueError("Expected coordinates to have 2 columns (위도, 경도). Check the output of get_lat_lng.")
+        print(f"Coordinates output: {coordinates.head()}")  # 좌표 데이터 확인
+        
+        # 좌표가 비어 있는지 확인
+        if coordinates.isnull().all():
+            raise ValueError("All coordinates are missing. Check the input data and get_lat_lng function.")
         
         coordinates_df = pd.DataFrame(coordinates.tolist(), index=newdf.index)
         # 좌표 데이터프레임의 열 개수 확인
