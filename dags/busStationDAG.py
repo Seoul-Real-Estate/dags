@@ -33,7 +33,7 @@ dag = DAG(
     schedule_interval='0 13 * * 3#1',
     catchup=False
 )
-DELETE_QUERY = "DROP TABLE raw_data.seoul_bus_station"
+DELETE_QUERY = "DROP TABLE IF EXISTS raw_data.seoul_bus_station"
 
 # seoul_bus_station 테이블 생성 쿼리
 CREATE_QUERY = """
@@ -147,6 +147,14 @@ def load_to_redshift():
     cursor.close()
 
 # seoul_bus_station 테이블 생성하는 Task
+deleteBusStationTable = PostgresOperator(
+    task_id = "delete_bus_station_table",
+    postgres_conn_id='rs_conn',
+    sql=DELETE_QUERY,
+    dag=dag
+)
+
+# seoul_bus_station 테이블 생성하는 Task
 createBusStationTable = PostgresOperator(
     task_id = "create_bus_station_table",
     postgres_conn_id='rs_conn',
@@ -181,4 +189,4 @@ load_data_to_redshift = PythonOperator(
     python_callable=load_to_redshift
 )
 
-createBusStationTable >> busDataExtract >> busDataTransform >> upload_data_to_S3 >> load_data_to_redshift
+deleteBusStationTable >> createBusStationTable >> busDataExtract >> busDataTransform >> upload_data_to_S3 >> load_data_to_redshift
