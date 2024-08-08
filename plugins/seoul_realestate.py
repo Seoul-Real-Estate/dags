@@ -535,6 +535,17 @@ class realestate:
         
         newdf = pd.merge(beforedf, afterdf, how='outer', indicator=True).query('_merge == "right_only"').drop(columns=['_merge'])
         coordinates = newdf["주소"].map(self.get_lat_lng)
-        newdf[["위도", "경도"]] = pd.DataFrame(coordinates.tolist(), index = newdf.index)
+
+        # 길이 확인
+        if len(coordinates) != len(newdf):
+            raise ValueError(f"Coordinates length ({len(coordinates)}) does not match the number of rows in newdf ({len(newdf)}).")
+    
+        # 좌표 데이터프레임으로 변환하여 newdf에 추가
+        coordinates_df = pd.DataFrame(coordinates.tolist(), index=newdf.index)
+        if coordinates_df.shape[1] != 2:
+            raise ValueError("Expected coordinates to have 2 columns (위도, 경도). Check the output of get_lat_lng.")
+        
+        newdf[["위도", "경도"]] = coordinates_df
+        
         findf = newdf[fincols]
         return findf
