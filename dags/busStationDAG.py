@@ -24,6 +24,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+URL = "https://data.seoul.go.kr/dataList/OA-15067/S/1/datasetView.do"
+FILE_NAME = 'seoul_bus_station.csv'
+
 
 kst = pendulum.timezone("Asia/Seoul")
 
@@ -65,7 +68,7 @@ def extract(**context):
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 
-    driver.get("https://data.seoul.go.kr/dataList/OA-15067/S/1/datasetView.do")
+    driver.get(URL)
 
     wait = WebDriverWait(driver, 20)
     button_1 = wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="btnCsv"]')))
@@ -77,16 +80,13 @@ def extract(**context):
     files = glob.glob(os.path.join(airflow_path, "서울시 버스정류소 위치정보.csv"))
     if files:
         latest_file = max(files, key=os.path.getctime)
-        new_name = os.path.join(airflow_path, "seoul_bus_station.csv")
+        new_name = os.path.join(airflow_path, FILE_NAME)
         os.rename(latest_file, new_name)
         logging.info(f"File renamed to: {new_name}")
     else:
         logging.info("No files found for renaming")
-
-
-    file_name = 'seoul_bus_station.csv'
     
-    file_path = f'{airflow_path}/{file_name}'
+    file_path = f'{airflow_path}/{FILE_NAME}'
     
     file = Path(file_path)
     if file.is_file():
@@ -123,7 +123,7 @@ def upload_to_S3(file_path, **kwargs):
     hook = S3Hook(aws_conn_id='S3_conn')
     hook.load_file(
         filename=file_path,
-        key='data/seoul_bus_station.csv', 
+        key=f'data/{FILE_NAME}', 
         bucket_name= bucket_name, 
         replace=True
     )
@@ -137,7 +137,7 @@ def load_to_redshift():
     # Redshift용 COPY 명령문
     copy_query = f"""
     COPY raw_data.seoul_bus_station
-    FROM 's3://team-ariel-2-data/data/seoul_bus_station.csv'
+    FROM 's3://team-ariel-2-data/data/{FILE_NAME}'
     IAM_ROLE 'arn:aws:iam::862327261051:role/service-role/AmazonRedshift-CommandsAccessRole-20240716T180249'
     CSV
     """
