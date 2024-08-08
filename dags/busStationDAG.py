@@ -30,18 +30,30 @@ kst = pendulum.timezone("Asia/Seoul")
 dag = DAG(
     dag_id='busStationDAG',
     start_date=datetime(2024, 7, 16, tzinfo=kst),
+<<<<<<< HEAD
     schedule_interval='0 13 * * 3#1',
     catchup=False
 )
 DELETE_QUERY = "DROP TABLE IF EXISTS raw_data.seoul_bus_station"
+=======
+    schedule_interval='@yearly',
+    catchup=False
+)
+>>>>>>> c20db44da378317cf86ef8feec9751178cfdd366
 
 # seoul_bus_station 테이블 생성 쿼리
 CREATE_QUERY = """
 CREATE TABLE IF NOT EXISTS raw_data.seoul_bus_station (
     station_id VARCHAR(20),
+<<<<<<< HEAD
     station_name VARCHAR(200),
     longitude FLOAT,
     latitude FLOAT
+=======
+    gu VARCHAR(20),
+    station_name VARCHAR(200),
+    total_route INT
+>>>>>>> c20db44da378317cf86ef8feec9751178cfdd366
 );
 """
 
@@ -65,6 +77,7 @@ def extract(**context):
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 
+<<<<<<< HEAD
     driver.get("https://data.seoul.go.kr/dataList/OA-15067/S/1/datasetView.do")
 
     wait = WebDriverWait(driver, 20)
@@ -78,13 +91,32 @@ def extract(**context):
     if files:
         latest_file = max(files, key=os.path.getctime)
         new_name = os.path.join(airflow_path, "seoul_bus_station.csv")
+=======
+    driver.get("https://data.seoul.go.kr/dataList/OA-22187/F/1/datasetView.do")
+
+    wait = WebDriverWait(driver, 20)
+    button_1 = wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="fileTr_1"]/td[6]/a')))
+    button_1.click()
+    print("Button clicked successfully!")
+
+    time.sleep(10)
+
+    files = glob.glob(os.path.join(airflow_path, "서울시 시내버스 정류소 현황_*"))
+    if files:
+        latest_file = max(files, key=os.path.getctime)
+        new_name = os.path.join(airflow_path, "seoul_bus_station.xlsx")
+>>>>>>> c20db44da378317cf86ef8feec9751178cfdd366
         os.rename(latest_file, new_name)
         logging.info(f"File renamed to: {new_name}")
     else:
         logging.info("No files found for renaming")
 
 
+<<<<<<< HEAD
     file_name = 'seoul_bus_station.csv'
+=======
+    file_name = 'seoul_bus_station.xlsx'
+>>>>>>> c20db44da378317cf86ef8feec9751178cfdd366
     
     file_path = f'{airflow_path}/{file_name}'
     
@@ -102,6 +134,7 @@ def extract(**context):
 def transform(**context):
     logging.info("transform started")
     try:
+<<<<<<< HEAD
         file_path = context['ti'].xcom_pull(task_ids="bus_extract")
         logging.info(file_path)
         df = pd.read_csv(file_path, encoding='cp949')
@@ -113,6 +146,23 @@ def transform(**context):
         logging.info("transform finished")   
         logging.info("new file path : " + file_path)
         return file_path   
+=======
+        xlsx_file_path = context['ti'].xcom_pull(task_ids="bus_extract")
+        xlsx = pd.read_excel(xlsx_file_path)
+
+        new_file_path = xlsx_file_path.replace('xlsx', 'csv')
+        xlsx.to_csv(new_file_path)
+
+        df = pd.read_csv(new_file_path)
+        
+        df.columns = ['0', '구분', '자치구', 'ID', '정류소 명', '노선수', '6', '7', '8', '9', '10']
+        df = df.drop(['0', '구분','6', '7', '8', '9', '10'], axis=1)
+        df.to_csv(new_file_path, index=False, header=False)
+
+        logging.info("transform finished")   
+        logging.info("new file path : " + new_file_path)
+        return new_file_path   
+>>>>>>> c20db44da378317cf86ef8feec9751178cfdd366
       
     except Exception as e:
         logging.info(f"An error occurred: {e}")
@@ -147,6 +197,7 @@ def load_to_redshift():
     cursor.close()
 
 # seoul_bus_station 테이블 생성하는 Task
+<<<<<<< HEAD
 deleteBusStationTable = PostgresOperator(
     task_id = "delete_bus_station_table",
     postgres_conn_id='rs_conn',
@@ -155,6 +206,8 @@ deleteBusStationTable = PostgresOperator(
 )
 
 # seoul_bus_station 테이블 생성하는 Task
+=======
+>>>>>>> c20db44da378317cf86ef8feec9751178cfdd366
 createBusStationTable = PostgresOperator(
     task_id = "create_bus_station_table",
     postgres_conn_id='rs_conn',
@@ -189,4 +242,8 @@ load_data_to_redshift = PythonOperator(
     python_callable=load_to_redshift
 )
 
+<<<<<<< HEAD
 deleteBusStationTable >> createBusStationTable >> busDataExtract >> busDataTransform >> upload_data_to_S3 >> load_data_to_redshift
+=======
+createBusStationTable >> busDataExtract >> busDataTransform >> upload_data_to_S3 >> load_data_to_redshift
+>>>>>>> c20db44da378317cf86ef8feec9751178cfdd366
