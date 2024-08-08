@@ -542,7 +542,6 @@ class realestate:
         print(f"Sample data in '주소' column of newdf: {newdf['주소'].head(10)}")
         print(f"Number of null values in '주소' column: {newdf['주소'].isnull().sum()}")
         
-        # '주소' 열의 데이터 상태를 확인하기 위한 예시
         print("Sample data in '주소' column of beforedf:")
         print(beforedf['주소'].head(10))
         
