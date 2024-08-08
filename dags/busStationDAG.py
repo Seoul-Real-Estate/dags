@@ -134,11 +134,13 @@ def load_to_redshift():
     conn = redshift_hook.get_conn()
     cursor = conn.cursor()
 
+    aws_iam_role = Variable.get('aws_iam_role')
+
     # Redshift용 COPY 명령문
     copy_query = f"""
     COPY raw_data.seoul_bus_station
     FROM 's3://team-ariel-2-data/data/{FILE_NAME}'
-    IAM_ROLE 'arn:aws:iam::862327261051:role/service-role/AmazonRedshift-CommandsAccessRole-20240716T180249'
+    IAM_ROLE '{aws_iam_role}'
     CSV
     """
     
