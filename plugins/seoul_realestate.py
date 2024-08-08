@@ -572,7 +572,5 @@ class realestate:
         
         # 좌표 데이터프레임을 원본 데이터프레임에 추가
         newdf[["위도", "경도"]] = coordinates_df
-        
-        # 결과 데이터프레임 생성
         findf = newdf[fincols]
         return findf
