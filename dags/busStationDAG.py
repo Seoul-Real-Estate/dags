@@ -30,7 +30,7 @@ kst = pendulum.timezone("Asia/Seoul")
 dag = DAG(
     dag_id='busStationDAG',
     start_date=datetime(2024, 7, 16, tzinfo=kst),
-    schedule_interval='0 13 * * 3#1',
+    schedule_interval='0 4 * * 3#1',
     catchup=False
 )
 DELETE_QUERY = "DROP TABLE IF EXISTS raw_data.seoul_bus_station"
