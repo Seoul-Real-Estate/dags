@@ -519,8 +519,9 @@ class realestate:
 
     def get_lat_lng(self, add):
         geolocator = Nominatim(user_agent='South Korea')
-
+        
         try:
+            print(f"Geocoding address: {add}")  # 디버깅을 위한 출력
             location = geolocator.geocode(add)
             if location:
                 latitude = location.latitude
@@ -537,7 +538,7 @@ class realestate:
             return None, None
         except Exception as e:
             print(f'예상치 못한 오류가 발생했습니다: {e}')
-        return None, None
+            return None, None
 
     def compare_add_latlon(self, beforedf, afterdf, fincols):
         # '계약갱신권사용여부' 컬럼의 데이터 타입을 일치
@@ -545,10 +546,12 @@ class realestate:
             beforedf['계약갱신권사용여부'] = beforedf['계약갱신권사용여부'].astype(str).fillna('')
             afterdf['계약갱신권사용여부'] = afterdf['계약갱신권사용여부'].astype(str).fillna('')
         
+        # 데이터프레임 병합 및 필터링
         newdf = pd.merge(beforedf, afterdf, how='outer', indicator=True).query('_merge == "right_only"').drop(columns=['_merge'])
-        # 데이터프레임 열 및 데이터 확인
-        print("Columns in newdf:", newdf.columns)
-        print("Sample data in '주소' column:", newdf["주소"].head())
+        
+        # '주소' 열이 비어 있는지 확인
+        if newdf["주소"].isnull().all():
+            raise ValueError("The '주소' column in the new DataFrame is empty or contains null values.")
         
         # 좌표 가져오기
         coordinates = newdf["주소"].map(self.get_lat_lng)
