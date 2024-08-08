@@ -62,10 +62,6 @@ def officetel_trade_compare(reclass, before_fname, now_fname, columns):
     csv_buffer = StringIO(file_content)
     now_df = pd.read_csv(csv_buffer, header=0)
     
-    # 디버깅 코드 추가
-    logging.info(f"Before DataFrame Shape: {before_df.shape}")
-    logging.info(f"Now DataFrame Shape: {now_df.shape}")
-
     new_df = reclass.compare_add_latlon(before_df, now_df, columns)
     return new_df
 
