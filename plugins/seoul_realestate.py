@@ -519,25 +519,13 @@ class realestate:
 
     def get_lat_lng(self, add):
         geolocator = Nominatim(user_agent='South Korea')
-        
-        try:
-            print(f"Geocoding address: {add}")  # 디버깅을 위한 출력
-            location = geolocator.geocode(add)
-            if location:
-                latitude = location.latitude
-                longitude = location.longitude
-                return latitude, longitude
-            else:
-                print(f'주소를 찾을 수 없습니다: {add}')
-                return None, None
-        except GeocoderTimedOut:
-            print('지오코딩 서비스가 시간 초과되었습니다. 다시 시도해 주세요.')
-            return None, None
-        except GeocoderServiceError as e:
-            print(f'지오코딩 서비스 오류: {e}')
-            return None, None
-        except Exception as e:
-            print(f'예상치 못한 오류가 발생했습니다: {e}')
+        location = geolocator.geocode(add)
+        if location:
+            latitude = location.latitude
+            longitude = location.longitude
+            return latitude, longitude
+        else:
+            print(f'주소를 찾을 수 없습니다: {add}')
             return None, None
 
     def compare_add_latlon(self, beforedf, afterdf, fincols):
