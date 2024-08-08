@@ -3,6 +3,8 @@ from bs4 import BeautifulSoup
 import pandas as pd
 from datetime import datetime, timedelta
 from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut, GeocoderServiceError
+
 
 querydate = (datetime.now()+timedelta(hours=9)).strftime(r"%Y%m%d")
 
@@ -517,15 +519,25 @@ class realestate:
 
     def get_lat_lng(self, add):
         geolocator = Nominatim(user_agent='South Korea')
-        location = geolocator.geocode(add)
-        if location:
-            latitude = location.latitude
-            longitude = location.longitude
-            return latitude, longitude
-        else:
-            print('지번 주소 문제')
-            print(add)
+
+        try:
+            location = geolocator.geocode(add)
+            if location:
+                latitude = location.latitude
+                longitude = location.longitude
+                return latitude, longitude
+            else:
+                print(f'주소를 찾을 수 없습니다: {add}')
+                return None, None
+        except GeocoderTimedOut:
+            print('지오코딩 서비스가 시간 초과되었습니다. 다시 시도해 주세요.')
             return None, None
+        except GeocoderServiceError as e:
+            print(f'지오코딩 서비스 오류: {e}')
+            return None, None
+        except Exception as e:
+            print(f'예상치 못한 오류가 발생했습니다: {e}')
+        return None, None
 
     def compare_add_latlon(self, beforedf, afterdf, fincols):
         # '계약갱신권사용여부' 컬럼의 데이터 타입을 일치시킴
