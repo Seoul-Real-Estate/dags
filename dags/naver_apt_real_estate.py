@@ -265,34 +265,41 @@ def get_naver_realtor_pk():
 
 
 def transform_apt_df(real_estate_df):
-    clean_numeric_column(real_estate_df, 'roomCount')
-    clean_numeric_column(real_estate_df, 'bathroomCount')
-    clean_numeric_column(real_estate_df, 'dealPrice')
-    clean_numeric_column(real_estate_df, 'warrantPrice')
-    clean_numeric_column(real_estate_df, 'rentPrice')
-    real_estate_df.loc[:, 'rentPrc'] = real_estate_df['rentPrc'].fillna(0)
-    real_estate_df['walkingTimeToNearSubway'] = real_estate_df['walkingTimeToNearSubway'].fillna(0).astype(int)
-    real_estate_df['supply_area'] = real_estate_df['area1'].fillna(0).astype(int)
-    real_estate_df['exclusive_area'] = real_estate_df['area2'].fillna(0).astype(int)
-    real_estate_df['parkingCount'] = real_estate_df['parkingCount'].fillna(0).astype(int)
-    real_estate_df['roomCount'] = real_estate_df['roomCount'].fillna(0).astype(int)
-    real_estate_df['bathroomCount'] = real_estate_df['bathroomCount'].fillna(0).astype(int)
-    real_estate_df['created_at'] = datetime.now()
-    real_estate_df['updated_at'] = datetime.now()
-    # 컬럼 순서 맞추기
-    desired_columns = ['articleNo', 'realtorId', 'complexNo', 'articleName', 'realEstateTypeName', 'tradeTypeName',
-                       'floorInfo', 'correspondingFloorCount', 'totalFloorCount', 'dealOrWarrantPrc', 'rentPrc',
-                       'dealPrice', 'warrantPrice', 'rentPrice', 'supply_area', 'exclusive_area', 'direction',
-                       'articleConfirmYmd', 'articleFeatureDesc', 'detailDescription', 'tagList', 'latitude',
-                       'longitude', 'detailAddress', 'exposureAddress', 'address', 'roadAddress', 'etcAddress',
-                       'buildingName', 'hoNm', 'cortarNo', 'parkingCount', 'parkingPossibleYN', 'principalUse',
-                       'roomCount', 'bathroomCount', 'roomFacilityCodes', 'roomFacilities', 'buildingFacilityCodes',
-                       'buildingFacilities', 'roofTopYN', 'useApproveYmd', 'exposeStartYMD', 'exposeEndYMD',
-                       'walkingTimeToNearSubway', 'heatMethodTypeCode', 'heatMethodTypeName', 'heatFuelTypeCode',
-                       'heatFuelTypeName', 'created_at', 'updated_at',
-                       ]
-    real_estate_df = real_estate_df[desired_columns]
-    return real_estate_df
+    try:
+        clean_numeric_column(real_estate_df, 'roomCount')
+        clean_numeric_column(real_estate_df, 'bathroomCount')
+        clean_numeric_column(real_estate_df, 'dealPrice')
+        clean_numeric_column(real_estate_df, 'warrantPrice')
+        clean_numeric_column(real_estate_df, 'rentPrice')
+        real_estate_df.loc[:, 'rentPrc'] = real_estate_df['rentPrc'].fillna(0)
+        real_estate_df['walkingTimeToNearSubway'] = real_estate_df['walkingTimeToNearSubway'].fillna(0).astype(int)
+        real_estate_df['supply_area'] = real_estate_df['area1'].fillna(0).astype(int)
+        real_estate_df['exclusive_area'] = real_estate_df['area2'].fillna(0).astype(int)
+        real_estate_df['parkingCount'] = real_estate_df['parkingCount'].fillna(0).astype(int)
+        real_estate_df['roomCount'] = real_estate_df['roomCount'].fillna(0).astype(int)
+        real_estate_df['bathroomCount'] = real_estate_df['bathroomCount'].fillna(0).astype(int)
+        real_estate_df['created_at'] = datetime.now()
+        real_estate_df['updated_at'] = datetime.now()
+        # 컬럼 순서 맞추기
+        desired_columns = ['articleNo', 'realtorId', 'complexNo', 'articleName', 'realEstateTypeName', 'tradeTypeName',
+                           'floorInfo', 'correspondingFloorCount', 'totalFloorCount', 'dealOrWarrantPrc', 'rentPrc',
+                           'dealPrice', 'warrantPrice', 'rentPrice', 'supply_area', 'exclusive_area', 'direction',
+                           'articleConfirmYmd', 'articleFeatureDesc', 'detailDescription', 'tagList', 'latitude',
+                           'longitude', 'detailAddress', 'exposureAddress', 'address', 'roadAddress', 'etcAddress',
+                           'buildingName', 'hoNm', 'cortarNo', 'parkingCount', 'parkingPossibleYN', 'principalUse',
+                           'roomCount', 'bathroomCount', 'roomFacilityCodes', 'roomFacilities', 'buildingFacilityCodes',
+                           'buildingFacilities', 'roofTopYN', 'useApproveYmd', 'exposeStartYMD', 'exposeEndYMD',
+                           'walkingTimeToNearSubway', 'heatMethodTypeCode', 'heatMethodTypeName', 'heatFuelTypeCode',
+                           'heatFuelTypeName', 'created_at', 'updated_at',
+                           ]
+        real_estate_df = real_estate_df[desired_columns]
+        return real_estate_df
+    except ValueError as ve:
+        logging.error(f"ValueError during transformation: {ve}")
+        raise
+    except Exception as e:
+        logging.error(f"Unexpected error in transform_apt_df: {e}")
+        raise
 
 
 @dag(
@@ -481,11 +488,21 @@ def naver_apt_real_estate():
 
     @task
     def transform_apt_real_estate():
-        today_real_estate_file_name = get_today_file_name(REAL_ESTATE_FILE_NAME)
-        apt_df = get_csv_from_s3(today_real_estate_file_name)
-        real_estate_df = transform_apt_df(apt_df)
-        today_transform_file_name = get_today_file_name('transform_' + REAL_ESTATE_FILE_NAME)
-        upload_to_s3(today_transform_file_name, real_estate_df)
+        try:
+            today_real_estate_file_name = get_today_file_name(REAL_ESTATE_FILE_NAME)
+            apt_df = get_csv_from_s3(today_real_estate_file_name)
+            real_estate_df = transform_apt_df(apt_df)
+            today_transform_file_name = get_today_file_name('transform_' + REAL_ESTATE_FILE_NAME)
+            upload_to_s3(today_transform_file_name, real_estate_df)
+        except FileNotFoundError:
+            logging.error(f"Error File '{today_real_estate_file_name}' not found in S3 '{BUCKET_NAME}'")
+            raise
+        except pd.errors.EmptyDataError:
+            logging.error(f"Error File '{today_real_estate_file_name}' is empty or could not be parsed.")
+            raise
+        except Exception as e:
+            logging.error(f"Unexpected error in transform_apt_real_estate: {e}")
+            raise
 
     @task
     def load_to_redshift_real_estate():
