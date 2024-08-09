@@ -153,7 +153,7 @@ def load_to_redshift():
     conn.commit()
     cursor.close()
 
-# seoul_bus_station 테이블 생성하는 Task
+# seoul_bus_station 테이블 삭제하는 Task
 deleteBusStationTable = PostgresOperator(
     task_id = "delete_bus_station_table",
     postgres_conn_id='rs_conn',
