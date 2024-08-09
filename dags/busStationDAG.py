@@ -25,15 +25,15 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 URL = "https://data.seoul.go.kr/dataList/OA-15067/S/1/datasetView.do"
-FILE_NAME = 'seoul_bus_station.csv'
+FILE_NAME = "seoul_bus_station.csv"
 
 
 kst = pendulum.timezone("Asia/Seoul")
 
 dag = DAG(
-    dag_id='busStationDAG',
+    dag_id="busStationDAG",
     start_date=datetime(2024, 7, 16, tzinfo=kst),
-    schedule_interval='0 4 * * 3#1',
+    schedule_interval="0 4 * * 3#1",
     catchup=False
 )
 
@@ -73,7 +73,7 @@ def extract(**context):
     driver.get(URL)
 
     wait = WebDriverWait(driver, 20)
-    button_1 = wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="btnCsv"]')))
+    button_1 = wait.until(EC.element_to_be_clickable((By.XPATH, "//*[@id='btnCsv']")))
     button_1.click()
     logging.info("Button 1 clicked successfully!")
 
@@ -88,7 +88,7 @@ def extract(**context):
     else:
         logging.info("No files found for renaming")
     
-    file_path = f'{airflow_path}/{FILE_NAME}'
+    file_path = f"{airflow_path}/{FILE_NAME}"
     
     file = Path(file_path)
     if file.is_file():
@@ -105,12 +105,12 @@ def extract(**context):
 def transform(**context):
     logging.info("transform started")
     try:
-        file_path = context['ti'].xcom_pull(task_ids="bus_extract")
+        file_path = context["ti"].xcom_pull(task_ids="bus_extract")
         logging.info(file_path)
-        df = pd.read_csv(file_path, encoding='cp949')
+        df = pd.read_csv(file_path, encoding="cp949")
         
-        df.columns = ['노드ID', '정류소번호', '정류소명', 'X', 'Y', '정류소타입']
-        df = df.drop(['노드ID', '정류소타입'], axis=1)
+        df.columns = ["노드ID", "정류소번호", "정류소명", "X", "Y", "정류소타입"]
+        df = df.drop(["노드ID", "정류소타입"], axis=1)
         df.to_csv(file_path, index=False, header=False)
 
         logging.info("transform finished")   
@@ -123,11 +123,11 @@ def transform(**context):
 
 # 변환한 CSV 파일 S3에 적재하는 함수
 def upload_to_S3(file_path, **kwargs):
-    bucket_name = 'team-ariel-2-data'
-    hook = S3Hook(aws_conn_id='S3_conn')
+    bucket_name = "team-ariel-2-data"
+    hook = S3Hook(aws_conn_id="S3_conn")
     hook.load_file(
         filename=file_path,
-        key=f'data/{FILE_NAME}', 
+        key=f"data/{FILE_NAME}", 
         bucket_name= bucket_name, 
         replace=True
     )
@@ -135,17 +135,17 @@ def upload_to_S3(file_path, **kwargs):
 
 # S3에서 Redshift로 COPY해서 적재하는 함수
 def load_to_redshift():
-    redshift_hook = PostgresHook(postgres_conn_id='rs_conn')
+    redshift_hook = PostgresHook(postgres_conn_id="rs_conn")
     conn = redshift_hook.get_conn()
     cursor = conn.cursor()
 
-    aws_iam_role = Variable.get('aws_iam_role')
+    aws_iam_role = Variable.get("aws_iam_role")
 
     # Redshift용 COPY 명령문
     copy_query = f"""
     COPY raw_data.seoul_bus_station
-    FROM 's3://team-ariel-2-data/data/{FILE_NAME}'
-    IAM_ROLE '{aws_iam_role}'
+    FROM "s3://team-ariel-2-data/data/{FILE_NAME}"
+    IAM_ROLE "{aws_iam_role}"
     CSV
     """
     
@@ -156,7 +156,7 @@ def load_to_redshift():
 # seoul_bus_station 테이블 삭제하는 Task
 deleteBusStationTable = PostgresOperator(
     task_id = "delete_bus_station_table",
-    postgres_conn_id='rs_conn',
+    postgres_conn_id="rs_conn",
     sql=DELETE_QUERY,
     dag=dag
 )
@@ -164,7 +164,7 @@ deleteBusStationTable = PostgresOperator(
 # seoul_bus_station 테이블 생성하는 Task
 createBusStationTable = PostgresOperator(
     task_id = "create_bus_station_table",
-    postgres_conn_id='rs_conn',
+    postgres_conn_id="rs_conn",
     sql=CREATE_QUERY,
     dag=dag
 )
@@ -187,7 +187,7 @@ busDataTransform = PythonOperator(
 upload_data_to_S3 = PythonOperator(
     task_id = "upload_to_S3",
     python_callable=upload_to_S3,
-    op_kwargs={'file_path': '{{ task_instance.xcom_pull(task_ids="bus_transform") }}'}
+    op_kwargs={"file_path": "{{ task_instance.xcom_pull(task_ids='bus_transform') }}"}
 )
 
 # S3에서 Redshift로 COPY해서 적재하는 Task
