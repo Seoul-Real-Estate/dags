@@ -49,7 +49,6 @@ CREATE TABLE IF NOT EXISTS raw_data.seoul_bus_station (
 );
 """
 
-
 # 서울시 버스 정보 csv 파일로 다운받는 함수
 def extract(**context):
     logging.info("Extract started")
@@ -154,7 +153,7 @@ def load_to_redshift():
     cursor.close()
 
 # seoul_bus_station 테이블 삭제하는 Task
-deleteBusStationTable = PostgresOperator(
+delete_bus_station_table = PostgresOperator(
     task_id = "delete_bus_station_table",
     postgres_conn_id="rs_conn",
     sql=DELETE_QUERY,
@@ -162,7 +161,7 @@ deleteBusStationTable = PostgresOperator(
 )
 
 # seoul_bus_station 테이블 생성하는 Task
-createBusStationTable = PostgresOperator(
+create_bus_station_table = PostgresOperator(
     task_id = "create_bus_station_table",
     postgres_conn_id="rs_conn",
     sql=CREATE_QUERY,
@@ -170,14 +169,14 @@ createBusStationTable = PostgresOperator(
 )
 
 # 서울시 버스 정보 csv 파일로 다운받는 Task
-busDataExtract = PythonOperator(
+bus_data_extract = PythonOperator(
     task_id = "bus_extract",
     python_callable=extract,
     dag=dag
 )
 
 # 다운받은 CSV 파일 변환하는 Task
-busDataTransform = PythonOperator(
+bus_data_transform = PythonOperator(
     task_id = "bus_transform",
     python_callable=transform,
     dag=dag
@@ -196,4 +195,4 @@ load_data_to_redshift = PythonOperator(
     python_callable=load_to_redshift
 )
 
-deleteBusStationTable >> createBusStationTable >> busDataExtract >> busDataTransform >> upload_data_to_S3 >> load_data_to_redshift
+delete_bus_station_table >> create_bus_station_table >> bus_data_extract >> bus_data_transform >> upload_data_to_S3 >> load_data_to_redshift
