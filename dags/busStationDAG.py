@@ -26,6 +26,7 @@ from selenium.webdriver.support import expected_conditions as EC
 
 URL = "https://data.seoul.go.kr/dataList/OA-15067/S/1/datasetView.do"
 FILE_NAME = "seoul_bus_station.csv"
+DOWNLOAD_FILE_NAME = "서울시 버스정류소 위치정보.csv"
 
 
 kst = pendulum.timezone("Asia/Seoul")
@@ -51,7 +52,7 @@ CREATE TABLE IF NOT EXISTS raw_data.seoul_bus_station (
 
 # 서울시 버스 정보 csv 파일로 다운받는 함수
 def extract(**context):
-    logging.info("Extract started")
+    logging.info("Extract 함수 시작")
 
     airflow_path = Variable.get("airflow_download_path")
 
@@ -74,50 +75,49 @@ def extract(**context):
     wait = WebDriverWait(driver, 20)
     button_1 = wait.until(EC.element_to_be_clickable((By.XPATH, "//*[@id='btnCsv']")))
     button_1.click()
-    logging.info("Button 1 clicked successfully!")
+    logging.info("다운로드 버튼 클릭")
 
     time.sleep(10)
 
-    files = glob.glob(os.path.join(airflow_path, "서울시 버스정류소 위치정보.csv"))
+    files = glob.glob(os.path.join(airflow_path, DOWNLOAD_FILE_NAME))
     if files:
         latest_file = max(files, key=os.path.getctime)
         new_name = os.path.join(airflow_path, FILE_NAME)
         os.rename(latest_file, new_name)
-        logging.info(f"File renamed to: {new_name}")
+        logging.info(f"{DOWNLOAD_FILE_NAME}에서 {new_name}로 파일 이름이 수정됨")
     else:
-        logging.info("No files found for renaming")
+        logging.info(f"이름을 변경할 {DOWNLOAD_FILE_NAME} 파일이 없음")
     
     file_path = f"{airflow_path}/{FILE_NAME}"
     
     file = Path(file_path)
     if file.is_file():
-        logging.info("Download Succeed")
+        logging.info(f"{file_path} 경로에 다운로드 성공")
     else:
-        logging.info("Download Failed")
+        logging.info(f"다운로드 실패 : {file_path}에 파일이 존재하지 않음")
 
     driver.quit() 
-    logging.info("Extract done")
+    logging.info("Extract 함수 종료")
     return file_path
 
 
 # 다운받은 CSV 파일 변환하는 함수
 def transform(**context):
-    logging.info("transform started")
+    logging.info("transform 함수 시작")
     try:
         file_path = context["ti"].xcom_pull(task_ids="bus_extract")
-        logging.info(file_path)
+        logging.info(f"파일 경로 extract로 부터 가져오기 성공 : {file_path}")
         df = pd.read_csv(file_path, encoding="cp949")
         
         df.columns = ["노드ID", "정류소번호", "정류소명", "X", "Y", "정류소타입"]
         df = df.drop(["노드ID", "정류소타입"], axis=1)
         df.to_csv(file_path, index=False, header=False)
 
-        logging.info("transform finished")   
-        logging.info("new file path : " + file_path)
+        logging.info("데이터 변환한 csv 파일 경로 : " + file_path)
+        logging.info("transform 함수 마무리")   
         return file_path   
-      
     except Exception as e:
-        logging.info(f"An error occurred: {e}")
+        logging.info(f"에러 발생: {e}")
 
 
 # 변환한 CSV 파일 S3에 적재하는 함수
