@@ -36,6 +36,7 @@ dag = DAG(
     schedule_interval='0 4 * * 3#1',
     catchup=False
 )
+
 DELETE_QUERY = "DROP TABLE IF EXISTS raw_data.seoul_bus_station"
 
 # seoul_bus_station 테이블 생성 쿼리
@@ -47,6 +48,7 @@ CREATE TABLE IF NOT EXISTS raw_data.seoul_bus_station (
     latitude FLOAT
 );
 """
+
 
 # 서울시 버스 정보 csv 파일로 다운받는 함수
 def extract(**context):
@@ -98,6 +100,7 @@ def extract(**context):
     logging.info("Extract done")
     return file_path
 
+
 # 다운받은 CSV 파일 변환하는 함수
 def transform(**context):
     logging.info("transform started")
@@ -117,6 +120,7 @@ def transform(**context):
     except Exception as e:
         logging.info(f"An error occurred: {e}")
 
+
 # 변환한 CSV 파일 S3에 적재하는 함수
 def upload_to_S3(file_path, **kwargs):
     bucket_name = 'team-ariel-2-data'
@@ -127,6 +131,7 @@ def upload_to_S3(file_path, **kwargs):
         bucket_name= bucket_name, 
         replace=True
     )
+
 
 # S3에서 Redshift로 COPY해서 적재하는 함수
 def load_to_redshift():
