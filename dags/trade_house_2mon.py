@@ -67,10 +67,10 @@ def house_trade_compare(reclass, before_fname, now_fname, columns):
 
 
 def check_new(new_df):
-    if len(new_df) >= 0:
+    if len(new_df) > 0:
         return "house_trade_new_uploadS3"
     else:
-        return "end_task"
+        return "end_task2"
 
 @task
 def house_trade_new_uploadS3(new_df, upload_fname):
