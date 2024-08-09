@@ -156,7 +156,10 @@ def get_villa_real_estate_detail(headers, articleNo):
 
 # 숫자 변환 시 에러가 발생하는 값은 NaN으로 대체
 def clean_numeric_column(df, column_name):
-    df[column_name] = pd.to_numeric(df[column_name], errors='coerce')
+    try:
+        df[column_name] = pd.to_numeric(df[column_name], errors='coerce')
+    except Exception as e:
+        logging.error(f"Error converting columns '{column_name}' to numeric: {e}")
 
 
 @dag(
@@ -323,7 +326,7 @@ def naver_villa_real_estate():
             clean_numeric_column(villa_df, 'warrantPrice')
             clean_numeric_column(villa_df, 'rentPrice')
 
-            villa_df.loc[:, 'rentPrc'] = villa_df['rentPrc'].fillna(0)
+            villa_df['rentPrc'] = villa_df['rentPrc'].fillna(0)
             villa_df['supply_area'] = villa_df['area1'].fillna(0).astype(int)
             villa_df['exclusive_area'] = villa_df['area2'].fillna(0).astype(int)
             villa_df['parkingCount'] = villa_df['parkingCount'].fillna(0).astype(int)
@@ -332,8 +335,17 @@ def naver_villa_real_estate():
             villa_df['walkingTimeToNearSubway'] = villa_df['walkingTimeToNearSubway'].fillna(0).astype(int)
             villa_df['created_at'] = datetime.now()
             villa_df['updated_at'] = datetime.now()
+        except FileNotFoundError:
+            logging.error(f"Error File '{today_villa_file_name}' not found in S3 '{BUCKET_NAME}'")
+            raise
+        except pd.errors.EmptyDataError:
+            logging.error(f"Error File '{today_villa_file_name}' is empty or could not be parsed.")
+            raise
+        except ValueError as ve:
+            logging.error(f"ValueError during transformation: {ve}")
+            raise
         except Exception as e:
-            logging.error(f"Error in transform_villa_real_estate: {e}")
+            logging.error(f"Unexpected error in transform_villa_real_estate: {e}")
             raise
 
         # 컬럼 순서 맞추기
