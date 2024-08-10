@@ -296,7 +296,7 @@ def transform_complex_address(complex):
 
     if complex["road_address"] is not None:
         complex['road_address'] = complex['road_address'].split(',')[0]
-    
+
     return complex
 
 
@@ -575,7 +575,6 @@ def dabang_apt_real_estate():
         tooltip="아파트 매물 전처리 후 Redshift 적재"
     )
     def transform_and_load_to_redshift_real_estate():
-        # 아파트 매물 전처리
         @task
         def prepare_apt_for_upload():
             today_apt_file_name = get_today_file_name(DABANG_APT_FILE_NAME)
@@ -596,7 +595,6 @@ def dabang_apt_real_estate():
             today_transform_apt_file_name = get_today_file_name("transform_" + DABANG_APT_FILE_NAME)
             upload_to_s3(today_transform_apt_file_name, apt_df)
 
-        # 아파트 매물 적재
         @task
         def load_to_redshift_apt():
             today_transform_apt_file_name = get_today_file_name("transform_" + DABANG_APT_FILE_NAME)
