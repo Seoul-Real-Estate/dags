@@ -344,7 +344,7 @@ def fill_missing_dabang_numeric_values(df, columns):
     default_args=default_args,
     description="다방 아파트 단지 및 매물 데이터 수집 및 적재 DAG",
     schedule_interval="0 12 * * *",
-    start_date=datetime(2024, 8, 8),
+    start_date=datetime(2024, 8, 10),
     catchup=False,
     tags=["daily", "real_estate", "dabang", "apt"]
 )
@@ -408,8 +408,7 @@ def dabang_apt_real_estate():
         def fetch_apt():
             apt_df_list = []
             dong_df = get_csv_from_s3(EUP_MYEON_DONG_FILE_NAME)
-            # 테스트
-            for idx, row in dong_df[:20].iterrows():
+            for idx, row in dong_df.iterrows():
                 sw = {"lat": row["sw_lat"], "lng": row["sw_lng"]}
                 ne = {"lat": row["ne_lat"], "lng": row["ne_lng"]}
                 apt_df = get_dabang_apt(sw, ne)
