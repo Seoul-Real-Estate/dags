@@ -65,6 +65,8 @@ def apartment_trade_compare(reclass, before_fname, now_fname, columns):
     # 데이터 타입 변환
     before_df['등기일자'] = before_df['등기일자'].astype(str)
     now_df['등기일자'] = now_df['등기일자'].astype(str)
+    before_df['취소일'] = before_df['취소일'].astype(str)
+    now_df['취소일'] = now_df['취소일'].astype(str)
 
     new_df = reclass.compare_add_latlon(before_df, now_df, columns)
     return new_df
