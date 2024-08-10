@@ -223,10 +223,20 @@ def get_apt_detail_info(room_id):
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
     }
     session = requests_retry_session()
-    res = session.get(DABANG_APT_DETAIL_URL, params=params, headers=headers)
-    logging.info(f"{res} | room_id: '{room_id}'")
-    res.raise_for_status()
-    return res.json()
+    try:
+        res = session.get(DABANG_APT_DETAIL_URL, params=params, headers=headers)
+        res.raise_for_status()
+        return res.json()
+    except requests.exceptions.HTTPError as he:
+        if 400 <= he.response.status_code < 500:
+            logging.warning(f"Warning '{he.response}' message: '{res.text}' error: '{he}'")
+            return None
+
+        logging.warning(f"Error '{he.response}' message: '{res.text}' error: '{he}'")
+        raise
+    except Exception as e:
+        logging.warning(f"Error [get_apt_detail_info] message:'{e}'")
+        raise
 
 
 def get_complex_detail_info(complex_id):
@@ -281,8 +291,12 @@ def add_necessary_columns(df, columns):
 
 
 def transform_complex_address(complex):
-    complex['jibun_address'] = complex['jibun_address'].split(',')[0]
-    complex['road_address'] = complex['road_address'].split(',')[0]
+    if complex["jibun_address"] is not None:
+        complex["jibun_address"] = complex["jibun_address"].split(',')[0]
+
+    if complex["road_address"] is not None:
+        complex['road_address'] = complex['road_address'].split(',')[0]
+    
     return complex
 
 
@@ -451,12 +465,14 @@ def dabang_apt_real_estate():
                                  "contact_number", "realtor_id", "heating", "room_floor_str"
                                  ]
             add_necessary_columns(apt_df, necessary_columns)
+
             numeric_columns = [
                 'latitude', 'longitude', 'maintenance_cost', 'deal_price',
                 'warrant_price', 'rent_price', 'room_size', 'provision_size',
                 'bath_num', 'beds_num', 'parking_num'
             ]
             fill_missing_dabang_numeric_values(apt_df, numeric_columns)
+            apt_df["parking_num"] = apt_df["parking_num"].fillna(0).astype(int)
             upload_to_s3(today_apt_file_name, apt_df)
 
         @task
@@ -507,9 +523,10 @@ def dabang_apt_real_estate():
                 "room_floor_str": str
             }
             apt_df = get_csv_from_s3(today_apt_file_name, dtype_spec)
-            # 테스트
-            for idx, row in apt_df[:30].iterrows():
+            for idx, row in apt_df.iterrows():
                 _json = get_apt_detail_info(row["id"])
+                if _json is None:
+                    continue
                 room = _json["room"]
                 complex = _json["complex"]
                 realtor = _json["agent"]
@@ -519,15 +536,20 @@ def dabang_apt_real_estate():
                 # 공인중개사 정보가 없는 경우는 직거래
                 realtor_id = ""
                 if realtor is not None:
-                    if realtor["location"] is not None:
+                    logging.info(f"room_id: {row["id"]}")
+                    logging.info(realtor)
+                    if realtor.get("location") is not None:
                         realtor["longitude"] = realtor["location"][0]
                         realtor["latitude"] = realtor["location"][1]
                     else:
-                        realtor["longitude"] = None
-                        realtor["latitude"] = None
-
+                        realtor["longitude"] = 0.0
+                        realtor["latitude"] = 0.0
+                    logging.info(
+                        f"{row['id']} | realtor longitude: '{realtor['longitude']}' latitude: '{realtor['latitude']}'")
                     realtor_infos.append(realtor)
                     realtor_id = realtor.get("id", "")
+                else:
+                    logging.info(f"{row['id']} | realtor information is missing.")
 
                 room["realtor_id"] = realtor_id
                 room["complex_id"] = complex.get("complex_id")
