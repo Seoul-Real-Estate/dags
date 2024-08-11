@@ -589,6 +589,7 @@ def dabang_apt_real_estate():
                                ]
             apt_df = apt_df[desired_columns]
             apt_df["parking_num"] = apt_df["parking_num"].fillna(0).astype(int)
+            apt_df["maintenance_cost"] = apt_df["maintenance_cost"].fillna(0).astype(int)
             apt_df["contact_number"] = apt_df["contact_number"].astype(str)
             apt_df["created_at"] = datetime.today()
             apt_df["updated_at"] = datetime.today()

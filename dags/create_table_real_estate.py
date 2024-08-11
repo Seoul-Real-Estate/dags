@@ -95,7 +95,7 @@ def get_create_table_sqls(schema):
                 longitude   FLOAT,
                 reg_id      VARCHAR(255),
                 users_idx   VARCHAR(255),
-                greetings   VARCHAR(255),
+                greetings   VARCHAR(5000),
                 created_at  TIMESTAMP,
                 updated_at  TIMESTAMP
             );
