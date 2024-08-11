@@ -101,6 +101,7 @@ def officetel_trade_compare(reclass, before_fname, now_fname, columns):
     csv_buffer = StringIO(file_content)
     now_df = pd.read_csv(csv_buffer, header=0)
 
+    #type error
     before_df['건축년도'] = before_df['건축년도'].replace(' ', np.nan).astype(float).fillna(0).astype(int)
     now_df['건축년도'] = now_df['건축년도'].replace(' ', np.nan).astype(float).fillna(0).astype(int)
     
