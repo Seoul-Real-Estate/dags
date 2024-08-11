@@ -193,7 +193,7 @@ def seoul_kindergarden():
         """
         execute_query(create_query)
 
-    # 어린이집 데이터 소스에서 데이터 처리
+    # 데이터 수집 및 변형
     @task
     def process_kindergarden_data():
         start_index = 1
@@ -210,7 +210,7 @@ def seoul_kindergarden():
         
         return all_records
 
-    # raw_data 스키마에 어린이집 데이터 적재
+    # raw_data 스키마에 데이터 적재
     @task
     def load_raw_temp(records):
         insert_query = f"""
@@ -222,7 +222,7 @@ def seoul_kindergarden():
         logging.info(f"Loading {len(records)} records into {RAW_SCHEMA}.{TEMP_TABLE}...")
         execute_query(insert_query, parameters=records, autocommit=False, executemany=True)
 
-    # raw_data 스키마의 어린이집 테이블 이름 변경
+    # raw_data 스키마에서의 테이블 이름 변경
     @task
     def swap_raw_temp_table():
         swap_query = f"""
@@ -231,7 +231,7 @@ def seoul_kindergarden():
         """
         execute_query(swap_query, autocommit=False)
 
-    # analytics 스키마에 상태, null값 처리하여 어린이집 테이블 생성 
+    # analytics 스키마에 영업상태, 주소 데이터 null값 처리하여 어린이집 테이블 생성 
     @task
     def create_analytics_temp_table():
         create_query = f"""
@@ -241,7 +241,7 @@ def seoul_kindergarden():
         """
         execute_query(create_query, autocommit=False)
 
-    # analytics 스카마의 어린이집 테이블에 좌표값 없는 행 좌표 데이터 추가
+    # analytics 스카마에서의 좌표값 없는 행에 대해 좌표 데이터 추가
     @task
     def update_missing_coordinates():
         select_query = f"SELECT id, road_address FROM {ANALYTICS_SCHEMA}.{TEMP_TABLE} WHERE latitude IS NULL OR longitude IS NULL"
@@ -261,7 +261,7 @@ def seoul_kindergarden():
             """
             execute_query(update_query, (latitude, longitude, id), autocommit=False)
 
-    # analytics 스키마의 어린이집 테이블에 법정동 이름에 대한 컬럼 추가 
+    # analytics 스키마에서의 법정동 이름에 대한 컬럼 추가 
     @task
     def add_dong_column():
         alter_query = f"""
@@ -269,7 +269,7 @@ def seoul_kindergarden():
         """
         execute_query(alter_query)
 
-    # analytics 스키마의 어린이집 테이블에 법정동 이름 데이터 업데이트 
+    # analytics 스키마에서의 법정동 이름 데이터 업데이트 
     @task
     def update_dong_names():
         select_query = f"SELECT id, longitude, latitude FROM {ANALYTICS_SCHEMA}.{TEMP_TABLE}"
@@ -284,7 +284,7 @@ def seoul_kindergarden():
             """
             execute_query(update_query, (dong, id), autocommit=False)
 
-    # analytics 스키마의 어린이집 테이블 이름 변경 
+    # analytics 스키마에서의 테이블 이름 변경 
     @task
     def swap_analytics_temp_table():
         replace_query = f"""
