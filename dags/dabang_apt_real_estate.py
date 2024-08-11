@@ -37,6 +37,8 @@ BASE_HEADERS = {
     "Sec-Fetch-Site": "same-origin",
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
 }
+DABANG_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36"}
 DABANG_APT_HEADERS = {
     "D-Api-Version": "5.0.0",
     "D-App-Version": "1",
@@ -152,16 +154,13 @@ def get_naver_search(keyword):
         "boundary": ""
     }
 
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36"}
-
     try:
         session = requests_retry_session()
-        res = session.get(NAVER_SEARCH_URL, params=params, headers=headers)
+        res = session.get(NAVER_SEARCH_URL, params=params, headers=DABANG_HEADERS)
         res.raise_for_status()
         return res.json()["result"]
     except Exception as e:
-        logging.error(f"Request [get_naver_search] failed: {e}; keyword: '{keyword}'")
+        logging.error(f"Request failed: {e}; keyword: '{keyword}'")
         raise
 
 
@@ -174,11 +173,14 @@ def get_naver_coordinate(x, y, keyword_rcode):
         "zoom": 16,
     }
 
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
-    }
-
-    return requests.get(NAVER_COORDINATE_URL, params=params, headers=headers).json()["features"][0]["bbox"]
+    try:
+        session = requests_retry_session()
+        res = session.get(NAVER_COORDINATE_URL, params=params, headers=DABANG_HEADERS)
+        res.raise_for_status()
+        return res.json().json()["features"][0]["bbox"]
+    except Exception as e:
+        logging.error(f"Request failed: {e}; keyword_rcode: '{keyword_rcode}'")
+        raise
 
 
 def get_dabang_apt(sw, ne):
@@ -219,12 +221,9 @@ def get_apt_detail_info(room_id):
         "version": "1"
     }
 
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
-    }
     session = requests_retry_session()
     try:
-        res = session.get(DABANG_APT_DETAIL_URL, params=params, headers=headers)
+        res = session.get(DABANG_APT_DETAIL_URL, params=params, headers=DABANG_HEADERS)
         res.raise_for_status()
         return res.json()
     except requests.exceptions.HTTPError as he:
@@ -247,12 +246,9 @@ def get_complex_detail_info(complex_id):
         "complex_id": complex_id,
         "version": "1"
     }
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
-    }
     try:
         session = requests_retry_session()
-        res = session.get(url, params=params, headers=headers)
+        res = session.get(url, params=params, headers=DABANG_HEADERS)
         res.raise_for_status()
         return res.json()["complex"]
     except Exception as e:
@@ -407,7 +403,7 @@ def dabang_apt_real_estate():
                 dong_df.loc[idx, "sw_lng"] = bbox[0]
                 dong_df.loc[idx, "ne_lat"] = bbox[3]
                 dong_df.loc[idx, "ne_lng"] = bbox[2]
-                time.sleep(1)  # 네이버지도API 서버 과부하로 IP 차단이 되는 것 같음. 따라서 1초 간격으로 요청으로 변경
+                time.sleep(1)
 
             upload_to_s3(EUP_MYEON_DONG_FILE_NAME, dong_df)
 
