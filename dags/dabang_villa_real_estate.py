@@ -326,6 +326,13 @@ def fill_missing_dabang_numeric_values(df, columns):
     return df
 
 
+def convert_to_list(location_str):
+    try:
+        return ast.literal_eval(location_str)
+    except (ValueError, SyntaxError):
+        return [None, None]
+
+
 @dag(
     default_args=default_args,
     description="다방 빌라 매물, 공인중개사 데이터 수집 및 적재 DAG",
@@ -439,7 +446,6 @@ def dabang_villa_real_estate():
                 "bath_num", "beds_num", "parking_num"
             ]
             villa_df = fill_missing_dabang_numeric_values(villa_df, numeric_columns)
-            villa_df["parking_num"] = villa_df["parking_num"].fillna(0).astype(int)
             villa_df["randomLocation"] = villa_df["randomLocation"].apply(fix_json_format)
             villa_df.loc[:, "latitude"] = villa_df["randomLocation"].apply(lambda x: x["lat"])
             villa_df.loc[:, "longitude"] = villa_df["randomLocation"].apply(lambda x: x["lng"])
@@ -538,6 +544,10 @@ def dabang_villa_real_estate():
                                "loan_str", "safeties", "room_options", "contact_number",
                                ]
             villa_df = villa_df[desired_columns]
+            villa_df["parking_num"] = villa_df["parking_num"].fillna(0).astype(int)
+            villa_df["contact_number"] = villa_df["contact_number"].astype(str)
+            villa_df["created_at"] = datetime.today()
+            villa_df["updated_at"] = datetime.today()
             upload_to_s3(today_transform_villa_file_name, villa_df)
 
         @task
@@ -576,10 +586,12 @@ def dabang_villa_real_estate():
         def transform_new_realtor():
             today_realtor_file_name = get_today_file_name(DABANG_REALTOR_FILE_NAME)
             realtor_df = get_df_from_s3_csv(today_realtor_file_name)
-            realtor_df.loc[:, 'longitude'] = realtor_df['location'].apply(lambda x: x[0])
-            realtor_df.loc[:, 'latitude'] = realtor_df['location'].apply(lambda x: x[1])
-            desired_columns = ['id', 'email', 'name', 'facename', 'address', 'latitude', 'longitude', 'greetings',
-                               'reg_id', 'users_idx', 'agent_tel']
+            realtor_df['location'] = realtor_df['location'].apply(convert_to_list)
+            realtor_df['longitude'] = realtor_df['location'].apply(lambda x: x[0] if x else None)
+            realtor_df['latitude'] = realtor_df['location'].apply(lambda x: x[1] if x else None)
+            desired_columns = ["id", "name", "address", "agent_tel", "email", "facename", "latitude", "longitude",
+                               "reg_id", "users_idx", "greetings"
+                               ]
             realtor_df = realtor_df[desired_columns]
             realtor_df["created_at"] = datetime.today()
             realtor_df["updated_at"] = datetime.today()
