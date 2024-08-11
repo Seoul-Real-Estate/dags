@@ -352,7 +352,7 @@ def fill_missing_dabang_numeric_values(df, columns):
 
 @dag(
     default_args=default_args,
-    description="다방 아파트 단지 및 매물 데이터 수집 및 적재 DAG",
+    description="다방 아파트 단지 및 매물, 공인중개사 데이터 수집 및 적재 DAG",
     schedule_interval="0 12 * * *",
     start_date=datetime(2024, 8, 10),
     catchup=False,
