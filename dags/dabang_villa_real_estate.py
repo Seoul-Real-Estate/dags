@@ -401,7 +401,7 @@ def dabang_villa_real_estate():
         def fetch_villa():
             villa_df_list = []
             dong_df = get_df_from_s3_csv(EUP_MYEON_DONG_FILE_NAME)
-            for idx, row in dong_df[:10].iterrows():
+            for idx, row in dong_df.iterrows():
                 sw = {"lat": row["sw_lat"], "lng": row["sw_lng"]}
                 ne = {"lat": row["ne_lat"], "lng": row["ne_lng"]}
                 code = int(str(row["cortarNo"])[:-2])
