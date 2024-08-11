@@ -70,7 +70,7 @@ def check_new(new_df):
     if len(new_df) > 0:
         return "house_rent_new_uploadS3"
     else:
-        return "end_task"
+        return "end_task2"
 
 @task
 def house_rent_new_uploadS3(new_df, upload_fname):

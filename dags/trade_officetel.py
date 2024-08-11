@@ -100,8 +100,11 @@ def officetel_trade_compare(reclass, before_fname, now_fname, columns):
     file_content = s3_hook.read_key(now_key, bucket_name)
     csv_buffer = StringIO(file_content)
     now_df = pd.read_csv(csv_buffer, header=0)
-    now_df['건축년도'] = now_df['건축년도'].replace(' ', np.nan).astype(float)
-    now_df['건축년도'] = now_df['건축년도'].fillna(0).astype(int)  # 예를 들어 0으로 채움
+
+    #type error
+    before_df['건축년도'] = before_df['건축년도'].replace(' ', np.nan).astype(float).fillna(0).astype(int)
+    now_df['건축년도'] = now_df['건축년도'].replace(' ', np.nan).astype(float).fillna(0).astype(int)
+    
     new_df = reclass.compare_add_latlon(before_df, now_df, columns)
     return new_df
 
