@@ -746,3 +746,16 @@ LoadToRedshift = PythonOperator(
     python_callable=loadToRedshift,
     dag=dag
 )
+
+CreateInfraTable >> GetDataCount
+GetDataCount >> DecideNextTask >> ExtractUniqueEstate
+DecideNextTask >> ExtractAllEstate >> DummyJoin
+DecideNextTask >> ExtractUniqueEstate >> DummyJoin
+DummyJoin >> TransformEstateData
+TransformEstateData >> [InfraExtract_1, InfraExtract_2, InfraExtract_3, InfraExtract_4]
+InfraExtract_1 >> InfraTransform_1
+InfraExtract_2 >> InfraTransform_2
+InfraExtract_3 >> InfraTransform_3
+InfraExtract_4 >> InfraTransform_4
+[InfraTransform_1, InfraTransform_2, InfraTransform_3, InfraTransform_4] >> CombineAllData
+CombineAllData >> LoadToCSV >> UploadToS3 >> LoadToRedshift
