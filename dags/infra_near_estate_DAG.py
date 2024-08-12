@@ -258,6 +258,15 @@ def getDataCount(**context):
 
     context["ti"].xcom_push(key="data_cnt", value=rows[0][0])
 
+
+def decideNextTask(**context):
+    cnt = context['ti'].xcom_pull(key="data_cnt")
+
+    if int(cnt) == 0:
+        return 'extract_allEstate'
+    else:
+        return 'extract_uniqueEstate'
+
 CreateInfraTable = PostgresOperator(
     task_id = "create_estateInfra_table",
     postgres_conn_id ='rs_conn',
@@ -268,5 +277,11 @@ CreateInfraTable = PostgresOperator(
 GetDataCount = PythonOperator(
     task_id = "get_data_count",
     python_callable=getDataCount,
+    dag = dag
+)
+
+DecideNextTask = BranchPythonOperator(
+    task_id = "decide_next_task",
+    python_callable=decideNextTask,
     dag = dag
 )
