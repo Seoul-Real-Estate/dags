@@ -274,6 +274,29 @@ CreateInfraTable = PostgresOperator(
     dag = dag
 )
 
+
+def extractAllEstate(**context):
+    logging.info("estractAllEstate")
+
+    redshift_hook = RedshiftSQLHook(redshift_conn_id='rs_conn')
+    
+    sql = """
+        SELECT articleno, longitude, latitude FROM raw_data.naver_real_estate;
+        """
+        
+    conn = redshift_hook.get_conn()
+    cursor = conn.cursor()
+    cursor.execute(sql)
+    rows = cursor.fetchall()
+        
+    df = pd.DataFrame(rows, columns=['id', 'longitude', 'latitude'])
+    arr = df.values.tolist()
+    length = len(arr)
+
+    context['ti'].xcom_push(key="estate_data_length", value=length)
+    context["ti"].xcom_push(key="estate_data", value=arr)
+
+
 GetDataCount = PythonOperator(
     task_id = "get_data_count",
     python_callable=getDataCount,
@@ -283,5 +306,11 @@ GetDataCount = PythonOperator(
 DecideNextTask = BranchPythonOperator(
     task_id = "decide_next_task",
     python_callable=decideNextTask,
+    dag = dag
+)
+
+ExtractAllEstate = PythonOperator(
+    task_id = "extract_allEstate",
+    python_callable=extractAllEstate,
     dag = dag
 )
