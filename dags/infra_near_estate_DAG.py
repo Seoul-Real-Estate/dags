@@ -608,6 +608,17 @@ def loadToCSV(**context):
    df = pd.DataFrame(data_list)
    df.to_csv(FILE_NAME, index=False)
 
+
+def uploadToS3():
+    bucket_name = BUCKET_NAME
+    hook = S3Hook(aws_conn_id='S3_conn')
+    hook.load_file(
+        filename=f'./{FILE_NAME}',
+        key=f'data/{FILE_NAME}', 
+        bucket_name= bucket_name, 
+        replace=True
+   )
+
 GetDataCount = PythonOperator(
     task_id = "get_data_count",
     python_callable=getDataCount,
@@ -701,5 +712,11 @@ CombineAllData = PythonOperator(
 LoadToCSV = PythonOperator(
     task_id = "load_to_csv",
     python_callable=loadToCSV,
+    dag=dag
+)
+
+UploadToS3 = PythonOperator(
+    task_id = "upload_to_s3",
+    python_callable=uploadToS3,
     dag=dag
 )
