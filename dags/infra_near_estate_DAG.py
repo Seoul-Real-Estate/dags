@@ -244,9 +244,29 @@ CREATE TABLE IF NOT EXISTS raw_data.infra_near_estate (
 );
 """
 
+def getDataCount(**context):
+    redshift_hook = RedshiftSQLHook(redshift_conn_id='rs_conn')
+    
+    sql = """
+    SELECT COUNT(*) FROM raw_data.infra_near_estate;
+    """
+    
+    conn = redshift_hook.get_conn()
+    cursor = conn.cursor()
+    cursor.execute(sql)
+    rows = cursor.fetchall()        
+
+    context["ti"].xcom_push(key="data_cnt", value=rows[0][0])
+
 CreateInfraTable = PostgresOperator(
     task_id = "create_estateInfra_table",
     postgres_conn_id ='rs_conn',
     sql = CREATE_QUERY,
+    dag = dag
+)
+
+GetDataCount = PythonOperator(
+    task_id = "get_data_count",
+    python_callable=getDataCount,
     dag = dag
 )
