@@ -297,6 +297,32 @@ def extractAllEstate(**context):
     context["ti"].xcom_push(key="estate_data", value=arr)
 
 
+def extractUniqueEstate(**context):
+    logging.info("extractUniqueEstate")
+
+    redshift_hook = RedshiftSQLHook(redshift_conn_id='rs_conn')
+    
+    new_estate_sql = """
+    SELECT A.articleno, A.longitude, A.latitude FROM raw_data.naver_real_estate AS A
+    LEFT JOIN raw_data.infra_near_estate AS B
+    ON A.articleno = B.estate_id 
+    WHERE B.estate_id IS NULL;
+    """
+        
+    conn = redshift_hook.get_conn()
+    cursor = conn.cursor()
+
+    cursor.execute(new_estate_sql)
+    rows = cursor.fetchall()
+
+    df = pd.DataFrame(rows, columns=['id', 'longitude', 'latitude'])
+    arr = df.values.tolist()
+    length = len(arr)
+
+    context['ti'].xcom_push(key="estate_data_length", value=length)
+    context["ti"].xcom_push(key="estate_data", value=arr)
+
+
 GetDataCount = PythonOperator(
     task_id = "get_data_count",
     python_callable=getDataCount,
@@ -312,5 +338,11 @@ DecideNextTask = BranchPythonOperator(
 ExtractAllEstate = PythonOperator(
     task_id = "extract_allEstate",
     python_callable=extractAllEstate,
+    dag = dag
+)
+
+ExtractUniqueEstate = PythonOperator(
+    task_id = "extract_uniqueEstate",
+    python_callable=extractUniqueEstate,
     dag = dag
 )
