@@ -6,16 +6,16 @@ import requests
 import psycopg2
 import logging
 
-RAW_SCHEMA = 'raw_data'
-ANALYTICS_SCHEMA = 'analytics'
-TEMP_TABLE = 'temp_seoul_cinema'
-MAIN_TABLE = 'seoul_cinema'
+RAW_SCHEMA = "raw_data"
+ANALYTICS_SCHEMA = "analytics"
+TEMP_TABLE = "temp_seoul_cinema"
+MAIN_TABLE = "seoul_cinema"
 
-SEOUL_API_KEY = Variable.get('seoul_api_key')
+SEOUL_API_KEY = Variable.get("seoul_api_key")
 API_BASE_URL = "http://openapi.seoul.go.kr:8088"
 API_ENDPOINT = "json/LOCALDATA_031302"
 
-VWORLD_API_KEY = Variable.get('vworld_api_key')
+VWORLD_API_KEY = Variable.get("vworld_api_key")
 GEOCODE_URL = "https://api.vworld.kr/req/address?"
 
 
@@ -98,19 +98,19 @@ def fetch_seoul_data(start_index, end_index):
 def transform_data(data_list):
     records = []
     for data in data_list:
-        last_modified_date = datetime.strptime(data['LASTMODTS'], '%Y-%m-%d %H:%M:%S').strftime("%Y-%m-%d") if data['LASTMODTS'] else None
-        update_date = datetime.strptime(data['UPDATEDT'], '%Y-%m-%d %H:%M:%S.%f').strftime("%Y-%m-%d") if data['UPDATEDT'] else None
+        last_modified_date = datetime.strptime(data["LASTMODTS"], "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%d") if data["LASTMODTS"] else None
+        update_date = datetime.strptime(data["UPDATEDT"], "%Y-%m-%d %H:%M:%S.%f").strftime("%Y-%m-%d") if data["UPDATEDT"] else None
         
         record = (
-            data['BPLCNM'],
-            data['TRDSTATEGBN'],
-            data['TRDSTATENM'],
-            data['DTLSTATEGBN'],
-            data['DTLSTATENM'],
-            data['SITEWHLADDR'],
-            data['RDNWHLADDR'],
+            data["BPLCNM"],
+            data["TRDSTATEGBN"],
+            data["TRDSTATENM"],
+            data["DTLSTATEGBN"],
+            data["DTLSTATENM"],
+            data["SITEWHLADDR"],
+            data["RDNWHLADDR"],
             last_modified_date,
-            data['UPDATEGBN'],
+            data["UPDATEGBN"],
             update_date
         )
         records.append(record)
@@ -136,11 +136,11 @@ def geocode(road_address):
 
         try:
             response_json = response.json()
-            result = response_json['response']
-            latitude = result['result']['point']['y']
-            longitude = result['result']['point']['x']
-            district_name = result['refined']['structure']['level2']
-            legal_dong_name = result['refined']['structure']['level3']
+            result = response_json["response"]
+            latitude = result["result"]["point"]["y"]
+            longitude = result["result"]["point"]["x"]
+            district_name = result["refined"]["structure"]["level2"]
+            legal_dong_name = result["refined"]["structure"]["level3"]
         except (IndexError, KeyError, TypeError, AttributeError) as error:
             logging.error(f"Failed to parse geocoding response for address: {road_address} with error: {error}")
             latitude = None
@@ -248,7 +248,7 @@ def seoul_cinema():
     # analytics 스키마에 필터링된 테이블 생성 
     @task
     def create_analytics_table():
-    # 1. '영업중'이며 주소가 있는 데이터만 필터링
+    # 1. "영업중"이며 주소가 있는 데이터만 필터링
     # 2. 같은 영화관의 여러 상영관 데이터를 하나로 통합 (좌표별로 최신 데이터(업데이트 날짜 기준)만 남기고 중복 제거)
         create_query = f"""
         DROP TABLE IF EXISTS {ANALYTICS_SCHEMA}.{MAIN_TABLE};
@@ -256,7 +256,7 @@ def seoul_cinema():
         WITH FilteredData AS (
             SELECT *
             FROM raw_data.seoul_cinema
-            WHERE detailed_status = '영업중' AND road_address <> ''
+            WHERE detailed_status = "영업중" AND road_address <> ""
         ),
         RankedData AS (
             SELECT *,
