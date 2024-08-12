@@ -1,18 +1,11 @@
-import ast
-import re
-import time
-from datetime import datetime, timedelta, date
-from io import StringIO
-
+import ast, re, time, requests, logging, json
 import pandas as pd
-import requests
-import logging
-import json
+from datetime import datetime, timedelta
+from io import StringIO
 from airflow.decorators import task, dag, task_group
 from airflow.models import Variable
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.providers.amazon.aws.hooks.redshift_sql import RedshiftSQLHook
-from requests import HTTPError
 from requests.adapters import HTTPAdapter
 from urllib3 import Retry
 
@@ -116,9 +109,9 @@ def upload_to_s3(file_name, data_frame):
 
 def get_df_from_s3_csv(file_name, dtype_spec=None):
     try:
-        s3_hook = S3Hook(aws_conn_id='aws_s3_connection')
-        key = 'data/' + file_name
-        csv_data = s3_hook.get_key(key=key, bucket_name=BUCKET_NAME).get()['Body']
+        s3_hook = S3Hook(aws_conn_id="aws_s3_connection")
+        key = "data/" + file_name
+        csv_data = s3_hook.get_key(key=key, bucket_name=BUCKET_NAME).get()["Body"]
         return pd.read_csv(csv_data, dtype=dtype_spec) if dtype_spec else pd.read_csv(csv_data)
     except FileNotFoundError as fe:
         logging.error(
@@ -202,6 +195,7 @@ def get_dabang_villa(code, sw, ne):
         villa_df_list.append(villa_df)
         if not villa_json["result"]["hasMore"]:
             break
+
         page += 1
 
     return pd.concat(villa_df_list, ignore_index=True)
@@ -254,7 +248,7 @@ def get_all_dabang_realtor_pk():
 
 def int_comversion(value):
     try:
-        if value is None or value == '':
+        if value is None or value == "":
             return 0
         return int(float(value))
     except (ValueError, TypeError):
@@ -311,7 +305,6 @@ def add_villa_detail_data(villa_df, idx, room):
 def fix_json_format(json_str):
     try:
         fixed_str = re.sub(r"(?<!\\)'", '"', json_str)
-        # JSON 파싱 시도
         return json.loads(fixed_str)
     except (json.JSONDecodeError, TypeError):
         return {}
@@ -520,9 +513,9 @@ def dabang_villa_real_estate():
                 if detail_json is None:
                     continue
 
-                room = detail_json['room']
-                realtor = detail_json['agent']
-                contact = detail_json['contact']
+                room = detail_json["room"]
+                realtor = detail_json["agent"]
+                contact = detail_json["contact"]
                 realtor_id = ""
                 if realtor is not None:
                     realtor_infos.append(realtor)
