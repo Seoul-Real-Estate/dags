@@ -475,6 +475,122 @@ def infraExtract_4(**context):
         extracted_list.append(data_list)  
     context["ti"].xcom_push(key="infra_extracted_data_4", value=extracted_list)
 
+
+def infraTransform_1(**context):
+    infra_extracted_list = context["ti"].xcom_pull(key="infra_extracted_data_1")
+    address_list = context["ti"].xcom_pull(key="estate_transform_data_1")
+
+    category_dict = {'MT1': 'mart', 'CS2': 'convenience', 'PS3': 'preschool', 'SC4':'school', 'OL7':'gas_station', 'SW8': 'subway', 'BK9': 'bank', 'CT1':'culture', 'PO3': 'public', 'HP8':'hospital', 'PN9':'pharmacy'}
+
+    trans_list = []
+    for ex_idx in range(len(infra_extracted_list)):
+        trans_dict = {}
+        extract = infra_extracted_list[ex_idx]
+        logging.info(extract)
+        trans_dict[f'estate_id'] = str(address_list[ex_idx][0])
+        trans_dict[f'x'] = float(address_list[ex_idx][1])
+        trans_dict[f'y'] = float(address_list[ex_idx][2])
+        for extract_data in extract:
+            code = extract_data['category_group_code']
+            for idx in range(3):
+                trans_dict[f'{category_dict[code]}_name_{idx+1}'] = extract_data['place_name']
+                trans_dict[f'{category_dict[code]}_distance_{idx+1}'] = int(extract_data['distance'])
+                trans_dict[f'{category_dict[code]}_category_{idx+1}'] = extract_data['category_group_name']
+                trans_dict[f'{category_dict[code]}_address_{idx+1}'] = extract_data['road_address_name']
+                trans_dict[f'{category_dict[code]}_x_{idx+1}'] = float(extract_data['x'])
+                trans_dict[f'{category_dict[code]}_y_{idx+1}'] = float(extract_data['y'])
+
+        trans_list.append(trans_dict)
+   
+    context["ti"].xcom_push(key="infra_transformed_data_1", value=trans_list)
+    
+
+def infraTransform_2(**context):
+   infra_extracted_list = context["ti"].xcom_pull(key="infra_extracted_data_2")
+   address_list = context["ti"].xcom_pull(key="estate_transform_data_2")
+
+   category_dict = {'MT1': 'mart', 'CS2': 'convenience', 'PS3': 'preschool', 'SC4':'school', 'OL7':'gas_station', 'SW8': 'subway', 'BK9': 'bank', 'CT1':'culture', 'PO3': 'public', 'HP8':'hospital', 'PN9':'pharmacy'}
+
+   trans_list = []
+   for ex_idx in range(len(infra_extracted_list)):
+      trans_dict = {}
+      extract = infra_extracted_list[ex_idx]
+      logging.info(extract)
+      trans_dict[f'estate_id'] = str(address_list[ex_idx][0])
+      trans_dict[f'x'] = float(address_list[ex_idx][1])
+      trans_dict[f'y'] = float(address_list[ex_idx][2])
+      for extract_data in extract:
+         code = extract_data['category_group_code']
+         for idx in range(3):
+            trans_dict[f'{category_dict[code]}_name_{idx+1}'] = extract_data['place_name']
+            trans_dict[f'{category_dict[code]}_distance_{idx+1}'] = int(extract_data['distance'])
+            trans_dict[f'{category_dict[code]}_category_{idx+1}'] = extract_data['category_group_name']
+            trans_dict[f'{category_dict[code]}_address_{idx+1}'] = extract_data['road_address_name']
+            trans_dict[f'{category_dict[code]}_x_{idx+1}'] = float(extract_data['x'])
+            trans_dict[f'{category_dict[code]}_y_{idx+1}'] = float(extract_data['y'])
+
+      trans_list.append(trans_dict)
+   
+   context["ti"].xcom_push(key="infra_transformed_data_2", value=trans_list)
+
+
+def infraTransform_3(**context):
+   infra_extracted_list = context["ti"].xcom_pull(key="infra_extracted_data_3")
+   address_list = context["ti"].xcom_pull(key="estate_transform_data_3")
+
+   category_dict = {'MT1': 'mart', 'CS2': 'convenience', 'PS3': 'preschool', 'SC4':'school', 'OL7':'gas_station', 'SW8': 'subway', 'BK9': 'bank', 'CT1':'culture', 'PO3': 'public', 'HP8':'hospital', 'PN9':'pharmacy'}
+
+   trans_list = []
+   for ex_idx in range(len(infra_extracted_list)):
+      trans_dict = {}
+      extract = infra_extracted_list[ex_idx]
+      logging.info(extract)
+      trans_dict[f'estate_id'] = str(address_list[ex_idx][0])
+      trans_dict[f'x'] = float(address_list[ex_idx][1])
+      trans_dict[f'y'] = float(address_list[ex_idx][2])
+      for extract_data in extract:
+         code = extract_data['category_group_code']
+         for idx in range(3):
+            trans_dict[f'{category_dict[code]}_name_{idx+1}'] = extract_data['place_name']
+            trans_dict[f'{category_dict[code]}_distance_{idx+1}'] = int(extract_data['distance'])
+            trans_dict[f'{category_dict[code]}_category_{idx+1}'] = extract_data['category_group_name']
+            trans_dict[f'{category_dict[code]}_address_{idx+1}'] = extract_data['road_address_name']
+            trans_dict[f'{category_dict[code]}_x_{idx+1}'] = float(extract_data['x'])
+            trans_dict[f'{category_dict[code]}_y_{idx+1}'] = float(extract_data['y'])
+
+      trans_list.append(trans_dict)
+   
+   context["ti"].xcom_push(key="infra_transformed_data_3", value=trans_list)
+
+
+def infraTransform_4(**context):
+   infra_extracted_list = context["ti"].xcom_pull(key="infra_extracted_data_4")
+   address_list = context["ti"].xcom_pull(key="estate_transform_data_4")
+
+   category_dict = {'MT1': 'mart', 'CS2': 'convenience', 'PS3': 'preschool', 'SC4':'school', 'OL7':'gas_station', 'SW8': 'subway', 'BK9': 'bank', 'CT1':'culture', 'PO3': 'public', 'HP8':'hospital', 'PN9':'pharmacy'}
+
+   trans_list = []
+   for ex_idx in range(len(infra_extracted_list)):
+      trans_dict = {}
+      extract = infra_extracted_list[ex_idx]
+      logging.info(extract)
+      trans_dict[f'estate_id'] = str(address_list[ex_idx][0])
+      trans_dict[f'x'] = float(address_list[ex_idx][1])
+      trans_dict[f'y'] = float(address_list[ex_idx][2])
+      for extract_data in extract:
+         code = extract_data['category_group_code']
+         for idx in range(3):
+            trans_dict[f'{category_dict[code]}_name_{idx+1}'] = extract_data['place_name']
+            trans_dict[f'{category_dict[code]}_distance_{idx+1}'] = int(extract_data['distance'])
+            trans_dict[f'{category_dict[code]}_category_{idx+1}'] = extract_data['category_group_name']
+            trans_dict[f'{category_dict[code]}_address_{idx+1}'] = extract_data['road_address_name']
+            trans_dict[f'{category_dict[code]}_x_{idx+1}'] = float(extract_data['x'])
+            trans_dict[f'{category_dict[code]}_y_{idx+1}'] = float(extract_data['y'])
+
+      trans_list.append(trans_dict)
+   
+   context["ti"].xcom_push(key="infra_transformed_data_4", value=trans_list)
+
 GetDataCount = PythonOperator(
     task_id = "get_data_count",
     python_callable=getDataCount,
@@ -532,5 +648,29 @@ InfraExtract_3 = PythonOperator(
 InfraExtract_4 = PythonOperator(
     task_id = "infra_extract_4",
     python_callable=infraExtract_4,
+    dag=dag
+)
+
+InfraTransform_1 = PythonOperator(
+    task_id = "infra_transform_1",
+    python_callable=infraTransform_1,
+    dag=dag
+)
+
+InfraTransform_2 = PythonOperator(
+    task_id = "infra_transform_2",
+    python_callable=infraTransform_2,
+    dag=dag
+)
+
+InfraTransform_3 = PythonOperator(
+    task_id = "infra_transform_3",
+    python_callable=infraTransform_3,
+    dag=dag
+)
+
+InfraTransform_4 = PythonOperator(
+    task_id = "infra_transform_4",
+    python_callable=infraTransform_4,
     dag=dag
 )
