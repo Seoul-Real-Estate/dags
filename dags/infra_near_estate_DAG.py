@@ -341,6 +341,140 @@ def transformEstateData(**context):
     logging.info(f"start : {end} - end : {length}")
     context["ti"].xcom_push(key=f"estate_transform_data_4", value=arr)
 
+
+def infraExtract_1(**context):
+    address_list = context["ti"].xcom_pull(key="estate_transform_data_1")
+    logging.info(len(address_list))
+    extracted_list = []
+    category = {'MT1': '마트', 'CS2': '편의점', 'PS3': '유치원', 'SC4':'학교', 'OL7':'주유소', 'SW8': '지하철역', 'BK9': '은행', 'CT1':'문화시설', 'PO3': '공공기관', 'HP8':'병원', 'PN9':'약국'}
+    for address in address_list:
+        data_list = []
+        for key, value in category.items():
+            url = URL
+
+            headers = {
+                'Authorization': f"KakaoAK {API_KEY_1}"
+            }
+            params = {
+                'category_group_code' : key,
+                'y' : address[2],
+                'x' : address[1],
+                'radius' : RADIUS,
+                'size': SIZE,
+                'sort': SORT
+            }
+
+            response = requests.get(url, headers=headers, params=params)
+            data = json.loads(response.text)
+            logging.info(f"key : {API_KEY_1}")
+            if len(data["documents"]) == 0:
+                temp = []
+                for i in range(3):
+                    temp.append({'address_name': '', 'category_group_code': key, 'category_group_name': value, 'category_name': '', 'distance': '0', 'id': '', 'phone': '', 'place_name': '', 'place_url': '', 'road_address_name': '', 'x': '0.0', 'y': '0.0'})
+                    data["documents"] = temp
+            data_list.extend(data["documents"])
+        extracted_list.append(data_list)  
+    context["ti"].xcom_push(key="infra_extracted_data_1", value=extracted_list)
+
+
+def infraExtract_2(**context):
+    address_list = context["ti"].xcom_pull(key="estate_transform_data_2")
+    extracted_list = []
+    category = {'MT1': '마트', 'CS2': '편의점', 'PS3': '유치원', 'SC4':'학교', 'OL7':'주유소', 'SW8': '지하철역', 'BK9': '은행', 'CT1':'문화시설', 'PO3': '공공기관', 'HP8':'병원', 'PN9':'약국'}
+    for address in address_list:
+        data_list = []
+        for key, value in category.items():
+            url = URL
+            headers = {
+                'Authorization': f"KakaoAK {API_KEY_2}"
+            }
+            params = {
+                'category_group_code' : key,
+                'y' : address[2],
+                'x' : address[1],
+                'radius' : RADIUS,
+                'size': SIZE,
+                'sort': SORT
+            }
+
+            response = requests.get(url, headers=headers, params=params)
+            data = json.loads(response.text)
+            logging.info(data)
+            if len(data["documents"]) == 0:
+                temp = []
+                for i in range(3):
+                    temp.append({'address_name': '', 'category_group_code': key, 'category_group_name': value, 'category_name': '', 'distance': '0', 'id': '', 'phone': '', 'place_name': '', 'place_url': '', 'road_address_name': '', 'x': '0.0', 'y': '0.0'})
+                    data["documents"] = temp
+            data_list.extend(data["documents"])
+        extracted_list.append(data_list)  
+    context["ti"].xcom_push(key="infra_extracted_data_2", value=extracted_list)
+
+
+def infraExtract_3(**context):
+    address_list = context["ti"].xcom_pull(key="estate_transform_data_3")
+    extracted_list = []
+    category = {'MT1': '마트', 'CS2': '편의점', 'PS3': '유치원', 'SC4':'학교', 'OL7':'주유소', 'SW8': '지하철역', 'BK9': '은행', 'CT1':'문화시설', 'PO3': '공공기관', 'HP8':'병원', 'PN9':'약국'}
+    for address in address_list:
+        data_list = []
+        for key, value in category.items():
+            url = URL
+
+            headers = {
+                'Authorization': f"KakaoAK {API_KEY_3}"
+            }
+            params = {
+                'category_group_code' : key,
+                'y' : address[2],
+                'x' : address[1],
+                'radius' : RADIUS,
+                'size': SIZE,
+                'sort': SORT
+            }
+
+            response = requests.get(url, headers=headers, params=params)
+            data = json.loads(response.text)
+            if len(data["documents"]) == 0:
+                temp = []
+                for i in range(3):
+                    temp.append({'address_name': '', 'category_group_code': key, 'category_group_name': value, 'category_name': '', 'distance': '0', 'id': '', 'phone': '', 'place_name': '', 'place_url': '', 'road_address_name': '', 'x': '0.0', 'y': '0.0'})
+                    data["documents"] = temp
+            data_list.extend(data["documents"])
+        extracted_list.append(data_list)  
+    context["ti"].xcom_push(key="infra_extracted_data_3", value=extracted_list)
+
+
+def infraExtract_4(**context):
+    address_list = context["ti"].xcom_pull(key="estate_transform_data_4")
+    extracted_list = []
+    category = {'MT1': '마트', 'CS2': '편의점', 'PS3': '유치원', 'SC4':'학교', 'OL7':'주유소', 'SW8': '지하철역', 'BK9': '은행', 'CT1':'문화시설', 'PO3': '공공기관', 'HP8':'병원', 'PN9':'약국'}
+    for address in address_list:
+        data_list = []
+        for key, value in category.items():
+            url = URL
+
+            headers = {
+                'Authorization': f"KakaoAK {API_KEY_4}"
+            }
+            params = {
+                'category_group_code' : key,
+                'y' : address[2],
+                'x' : address[1],
+                'radius' : RADIUS,
+                'size': SIZE,
+                'sort': SORT
+            }
+
+            response = requests.get(url, headers=headers, params=params)
+            data = json.loads(response.text)
+            if len(data["documents"]) == 0:
+                temp = []
+                for i in range(3):
+                    temp.append({'address_name': '', 'category_group_code': key, 'category_group_name': value, 'category_name': '', 'distance': '0', 'id': '', 'phone': '', 'place_name': '', 'place_url': '', 'road_address_name': '', 'x': '0.0', 'y': '0.0'})
+                    data["documents"] = temp
+            data_list.extend(data["documents"])
+        extracted_list.append(data_list)  
+    context["ti"].xcom_push(key="infra_extracted_data_4", value=extracted_list)
+
 GetDataCount = PythonOperator(
     task_id = "get_data_count",
     python_callable=getDataCount,
@@ -375,4 +509,28 @@ TransformEstateData = PythonOperator(
     task_id = "transform_estate_data",
     python_callable=transformEstateData,
     dag = dag
+)
+
+InfraExtract_1 = PythonOperator(
+    task_id = "infra_extract_1",
+    python_callable=infraExtract_1,
+    dag=dag
+)
+
+InfraExtract_2 = PythonOperator(
+    task_id = "infra_extract_2",
+    python_callable=infraExtract_2,
+    dag=dag
+)
+
+InfraExtract_3 = PythonOperator(
+    task_id = "infra_extract_3",
+    python_callable=infraExtract_3,
+    dag=dag
+)
+
+InfraExtract_4 = PythonOperator(
+    task_id = "infra_extract_4",
+    python_callable=infraExtract_4,
+    dag=dag
 )
