@@ -602,6 +602,12 @@ def combineAllData(**context):
 
     context["ti"].xcom_push(key="combined_data", value=combine_data)
 
+
+def loadToCSV(**context):
+   data_list = context["ti"].xcom_pull(key="combined_data")
+   df = pd.DataFrame(data_list)
+   df.to_csv(FILE_NAME, index=False)
+
 GetDataCount = PythonOperator(
     task_id = "get_data_count",
     python_callable=getDataCount,
@@ -689,5 +695,11 @@ InfraTransform_4 = PythonOperator(
 CombineAllData = PythonOperator(
     task_id = "combine_all_data",
     python_callable=combineAllData,
+    dag=dag
+)
+
+LoadToCSV = PythonOperator(
+    task_id = "load_to_csv",
+    python_callable=loadToCSV,
     dag=dag
 )
