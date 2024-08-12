@@ -28,6 +28,7 @@ NAVER_SEARCH_URL = "https://map.naver.com/p/api/search/allSearch"
 NAVER_COORDINATE_URL = "https://map.naver.com/p/api/polygon"
 DABANG_VILLA_URL = "https://www.dabangapp.com/api/v5/room-list/category/house-villa/region"
 DABANG_VILLA_DETAIL_URL = "https://www.dabangapp.com/api/3/new-room/detail"
+DABANG_VILLA_ADDRESS_URL = "https://www.dabangapp.com/api/3/room/near"
 BASE_HEADERS = {
     "Accept-Encoding": "gzip",
     "Host": "new.land.naver.com",
@@ -262,19 +263,20 @@ def int_comversion(value):
 
 def add_villa_detail_data(villa_df, idx, room):
     try:
-        villa_df.loc[idx, 'building_use_types_str'] = room.get('building_use_types_str')[0] if room.get(
-            'building_use_types_str') else None
-        villa_df.at[idx, "contact_number"] = room.get("call_number", '')
-        villa_df.at[idx, "dabang_realtor_id"] = room.get("realtor_id", '')
-        villa_df.at[idx, "memo"] = room.get("memo", '')
+        villa_df.loc[idx, "address"] = room.get("address", "")
+        villa_df.loc[idx, "building_use_types_str"] = room.get("building_use_types_str")[0] if room.get(
+            "building_use_types_str") else None
+        villa_df.at[idx, "contact_number"] = room.get("call_number", "")
+        villa_df.at[idx, "dabang_realtor_id"] = room.get("realtor_id", "")
+        villa_df.at[idx, "memo"] = room.get("memo", "")
         villa_df.loc[idx, "dong"] = room.get("dong")
-        villa_df.at[idx, "ho"] = room.get("ho", '')
-        villa_df.at[idx, "saved_time_str"] = room.get("saved_time_str", '')
+        villa_df.at[idx, "ho"] = room.get("ho", "")
+        villa_df.at[idx, "saved_time_str"] = room.get("saved_time_str", "")
         villa_df.loc[idx, "roomTypeName"] = room.get("room_type_str")
-        villa_df.at[idx, "heating"] = room.get("heating", '')
-        villa_df.at[idx, "room_floor_str"] = room.get("room_floor_str", '')
-        villa_df.at[idx, "building_floor_str"] = room.get("building_floor_str", '')
-        villa_df.at[idx, "building_approval_date_str"] = room.get("building_approval_date_str", '')
+        villa_df.at[idx, "heating"] = room.get("heating", "")
+        villa_df.at[idx, "room_floor_str"] = room.get("room_floor_str", "")
+        villa_df.at[idx, "building_floor_str"] = room.get("building_floor_str", "")
+        villa_df.at[idx, "building_approval_date_str"] = room.get("building_approval_date_str", "")
         villa_df.loc[idx, "bath_num"] = int_comversion(room.get("bath_num"))
         villa_df.loc[idx, "beds_num"] = int_comversion(room.get("beds_num"))
         villa_df.loc[idx, "maintenance_cost"] = int_comversion(room.get("maintenance_cost"))
@@ -331,6 +333,19 @@ def convert_to_list(location_str):
         return ast.literal_eval(location_str)
     except (ValueError, SyntaxError):
         return [None, None]
+
+
+def get_dabang_villa_address(room_id):
+    params = {
+        "api_version": "3.0.1",
+        "call_type": "web",
+        "room_id": room_id,
+        "version": "1"
+    }
+    res = requests.get(DABANG_VILLA_ADDRESS_URL, params=params, headers=DABANG_BASE_HEADERS)
+    res.raise_for_status()
+    near_json = res.json()
+    return near_json['address']
 
 
 @dag(
@@ -513,6 +528,7 @@ def dabang_villa_real_estate():
                     realtor_infos.append(realtor)
                     realtor_id = realtor.get("id", "")
 
+                room["address"] = get_dabang_villa_address(row["id"])
                 room["realtor_id"] = realtor_id
                 room["call_number"] = contact.get("call_number")
                 room["building_use_types_str"] = contact.get("building_use_types_str")
