@@ -323,6 +323,24 @@ def extractUniqueEstate(**context):
     context["ti"].xcom_push(key="estate_data", value=arr)
 
 
+def transformEstateData(**context):
+    logging.info("getEstateXY")
+    data = context["ti"].xcom_pull(key="estate_data")
+    length = context["ti"].xcom_pull(key="estate_data_length")
+    logging.info(f"data_length : {len(data)} length : {length}")
+    data_number = length // 4
+    end = 0
+    for i in range(3):
+        start = i * data_number
+        end = (i + 1) * data_number
+        logging.info(f"start : {start} - end : {end}")
+        arr = data[start: end]
+        context["ti"].xcom_push(key=f"estate_transform_data_{i+1}", value=arr)
+    
+    arr = data[end: length]
+    logging.info(f"start : {end} - end : {length}")
+    context["ti"].xcom_push(key=f"estate_transform_data_4", value=arr)
+
 GetDataCount = PythonOperator(
     task_id = "get_data_count",
     python_callable=getDataCount,
@@ -351,4 +369,10 @@ DummyJoin = EmptyOperator(
     task_id='dummy_join',
     trigger_rule='none_failed_or_skipped',
     dag=dag
+)
+
+TransformEstateData = PythonOperator(
+    task_id = "transform_estate_data",
+    python_callable=transformEstateData,
+    dag = dag
 )
