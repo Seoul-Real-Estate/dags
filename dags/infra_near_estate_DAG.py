@@ -618,6 +618,26 @@ def uploadToS3():
         bucket_name= bucket_name, 
         replace=True
    )
+    
+
+def loadToRedshift():
+   redshift_hook = PostgresHook(postgres_conn_id='rs_conn')
+   conn = redshift_hook.get_conn()
+   cursor = conn.cursor()
+
+    # Redshift용 COPY 명령문
+   copy_query = f"""
+   COPY raw_data.infra_near_estate
+   FROM 's3://{BUCKET_NAME}/data/{FILE_NAME}'
+   IAM_ROLE '{IAM_ROLE}'
+   CSV
+   IGNOREHEADER 1;
+   """
+    
+   cursor.execute(copy_query)
+   conn.commit()
+   cursor.close()
+
 
 GetDataCount = PythonOperator(
     task_id = "get_data_count",
@@ -718,5 +738,11 @@ LoadToCSV = PythonOperator(
 UploadToS3 = PythonOperator(
     task_id = "upload_to_s3",
     python_callable=uploadToS3,
+    dag=dag
+)
+
+LoadToRedshift = PythonOperator(
+    task_id = "load_to_redshift",
+    python_callable=loadToRedshift,
     dag=dag
 )
