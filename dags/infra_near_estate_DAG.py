@@ -503,7 +503,7 @@ def infraTransform_1(**context):
         trans_list.append(trans_dict)
    
     context["ti"].xcom_push(key="infra_transformed_data_1", value=trans_list)
-    
+
 
 def infraTransform_2(**context):
    infra_extracted_list = context["ti"].xcom_pull(key="infra_extracted_data_2")
@@ -591,6 +591,17 @@ def infraTransform_4(**context):
    
    context["ti"].xcom_push(key="infra_transformed_data_4", value=trans_list)
 
+
+def combineAllData(**context):
+    transformed_data_1 = context["ti"].xcom_pull(key="infra_transformed_data_1")
+    transformed_data_2 = context["ti"].xcom_pull(key="infra_transformed_data_2")
+    transformed_data_3 = context["ti"].xcom_pull(key="infra_transformed_data_3")
+    transformed_data_4 = context["ti"].xcom_pull(key="infra_transformed_data_4")
+
+    combine_data = transformed_data_1 + transformed_data_2 + transformed_data_3 + transformed_data_4
+
+    context["ti"].xcom_push(key="combined_data", value=combine_data)
+
 GetDataCount = PythonOperator(
     task_id = "get_data_count",
     python_callable=getDataCount,
@@ -672,5 +683,11 @@ InfraTransform_3 = PythonOperator(
 InfraTransform_4 = PythonOperator(
     task_id = "infra_transform_4",
     python_callable=infraTransform_4,
+    dag=dag
+)
+
+CombineAllData = PythonOperator(
+    task_id = "combine_all_data",
+    python_callable=combineAllData,
     dag=dag
 )
