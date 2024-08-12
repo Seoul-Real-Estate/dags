@@ -346,3 +346,9 @@ ExtractUniqueEstate = PythonOperator(
     python_callable=extractUniqueEstate,
     dag = dag
 )
+
+DummyJoin = EmptyOperator(
+    task_id='dummy_join',
+    trigger_rule='none_failed_or_skipped',
+    dag=dag
+)
