@@ -53,8 +53,8 @@ def execute_query(query, parameters=None, autocommit=True, fetchall=False, execu
         logging.error(f"Database error: {db_error}")
         cur.execute("ROLLBACK;")
         raise
-    except Exception as general_error:
-        logging.error(f"Exception error: {general_error}")
+    except Exception as error:
+        print(f"execute query failed {error=}, {type(error)=}")
         cur.execute("ROLLBACK;")
         raise
     finally:
@@ -72,11 +72,8 @@ def get_total_data_count():
         total_count = data[API_ENDPOINT]["list_total_count"]
         logging.info(f"Total count fetched: {total_count}")
         return total_count
-    except requests.exceptions.HTTPError as http_error:
-        logging.error(f"HTTP error occurred: {http_error}")
-        raise
-    except requests.RequestException as error:
-        logging.error(f"API request failed: {error}")
+    except Exception as error:
+        logging.error(f"API request failed: {error=}, {type(error)=}")
         raise
 
 
@@ -87,11 +84,8 @@ def fetch_seoul_data(start_index, end_index):
         response = requests.get(url)
         response.raise_for_status()
         return response.json()[API_ENDPOINT]["row"]
-    except requests.exceptions.HTTPError as http_error:
-        logging.error(f"HTTP error occurred: {http_error}")
-        raise
-    except requests.RequestException as error:
-        logging.error(f"API request failed for range {start_index}-{end_index}: {error}")
+    except Exception as error:
+        logging.error(f"API request failed: {error=}, {type(error)=}")
         raise
 
 
@@ -148,11 +142,8 @@ def geocode(road_address):
             longitude = None
             district_name = None
             legal_dong_name = None
-    except requests.exceptions.HTTPError as http_error:
-        logging.error(f"HTTP error occurred: {http_error}")
-        raise
-    except requests.RequestException as error:
-        logging.error(f"API request failed for address: {road_address} with error: {error}")
+    except Exception as error:
+        logging.error(f"API request failed for address: {road_address}, {type(error)=}")
         raise
 
     return latitude, longitude, district_name, legal_dong_name
