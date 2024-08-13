@@ -219,7 +219,7 @@ def seoul_school():
 
     # ANALYTICS 스키마에 데이터 삽입
     @task
-    def populate_analytics_table():
+    def insert_geocoded_school_data():
         # raw_data의 중복 데이터 제거 
         select_query = f"""
         SELECT DISTINCT school_code, school_name, school_type, postal_code, 
@@ -269,10 +269,10 @@ def seoul_school():
     load_raw_table_task = load_raw_table(process_data_task)
     rename_raw_table_task = rename_raw_table()
     create_analytics_table_task = create_analytics_table()
-    populate_analytics_table_task = populate_analytics_table()
+    insert_geocoded_school_data_task = insert_geocoded_school_data()
     rename_analytics_table_task = rename_analytics_table()
 
     create_raw_table_task >> process_data_task >> load_raw_table_task >> rename_raw_table_task
-    rename_raw_table_task >> create_analytics_table_task >> populate_analytics_table_task >> rename_analytics_table_task
+    rename_raw_table_task >> create_analytics_table_task >> insert_geocoded_school_data_task >> rename_analytics_table_task
 
 seoul_school()
