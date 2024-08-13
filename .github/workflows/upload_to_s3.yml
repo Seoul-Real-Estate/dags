@@ -3,7 +3,7 @@ name: Upload DAG files to S3
 on:
   push:
     branches:
-      - develop
+      - main
 
 jobs:
   upload-to-s3:
