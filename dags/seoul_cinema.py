@@ -13,7 +13,8 @@ MAIN_TABLE = "seoul_cinema"
 
 SEOUL_API_KEY = Variable.get("seoul_api_key")
 API_BASE_URL = "http://openapi.seoul.go.kr:8088"
-API_ENDPOINT = "json/LOCALDATA_031302"
+API_RESPONSE_TYPE = "json/"
+API_ENDPOINT = "LOCALDATA_031302"
 
 VWORLD_API_KEY = Variable.get("vworld_api_key")
 GEOCODE_URL = "https://api.vworld.kr/req/address?"
@@ -63,12 +64,12 @@ def execute_query(query, parameters=None, autocommit=True, fetchall=False, execu
 
 # API 요청에 대한 전체 데이터의 개수를 반환하는 함수
 def get_total_data_count():
-    url = f"{API_BASE_URL}/{SEOUL_API_KEY}/{API_ENDPOINT}/1/1"
+    url = f"{API_BASE_URL}/{SEOUL_API_KEY}/{API_RESPONSE_TYPE}{API_ENDPOINT}/1/1"
     try:
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
-        total_count = data["LOCALDATA_031302"]["list_total_count"]
+        total_count = data[API_ENDPOINT]["list_total_count"]
         logging.info(f"Total count fetched: {total_count}")
         return total_count
     except requests.exceptions.HTTPError as http_error:
@@ -81,11 +82,11 @@ def get_total_data_count():
 
 # 영화상영관 데이터를 API에서 가져오는 함수
 def fetch_seoul_data(start_index, end_index):
-    url = f"{API_BASE_URL}/{SEOUL_API_KEY}/{API_ENDPOINT}/{start_index}/{end_index}"
+    url = f"{API_BASE_URL}/{SEOUL_API_KEY}/{API_RESPONSE_TYPE}{API_ENDPOINT}/{start_index}/{end_index}"
     try:
         response = requests.get(url)
         response.raise_for_status()
-        return response.json()["LOCALDATA_031302"]["row"]
+        return response.json()[API_ENDPOINT]["row"]
     except requests.exceptions.HTTPError as http_error:
         logging.error(f"HTTP error occurred: {http_error}")
         raise
