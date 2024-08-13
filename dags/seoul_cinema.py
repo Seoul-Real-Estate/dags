@@ -209,7 +209,7 @@ def seoul_cinema():
     def add_coordinate_and_dong(records):
         geocoded_records = []
         for record in records:
-            address = record[6]  # 주소 RDNWHLADDR
+            address = record[6] 
             latitude, longitude, district_name, legal_dong_name = geocode(address)
             geocoded_record = list(record) + [latitude, longitude, district_name, legal_dong_name]
             geocoded_records.append(tuple(geocoded_record))
