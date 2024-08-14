@@ -533,6 +533,6 @@ load_to_redshift_task = PythonOperator(
 CreateparkTable >> GetDataCount >> DecideNextTask >> ExtractUniqueEstate
 DecideNextTask >> ExtractAllEstate >> DummyJoin
 DecideNextTask >> ExtractUniqueEstate >> DummyJoin
-DummyJoin >> TransformEstateData >> park_extract_task >> [park_transform_task_1, park_transform_task_2, park_transform_task_3, park_transform_task_4, park_transform_task_5, park_transform_task_6]
-[park_transform_task_1, park_transform_task_2, park_transform_task_3, park_transform_task_4, park_transform_task_5, park_transform_task_6] >> combine_all_data_task
+DummyJoin >> TransformEstateData >> park_extract_task >> park_transform_task_1 >> park_transform_task_2 >> park_transform_task_3 >> park_transform_task_4 >> park_transform_task_5 >> park_transform_task_6
+park_transform_task_6 >> combine_all_data_task
 combine_all_data_task >> load_to_csv_task >> upload_to_S3_task >> load_to_redshift_task
