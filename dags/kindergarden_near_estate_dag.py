@@ -33,7 +33,7 @@ dag = DAG(
 #  테이블 생성 쿼리
 CREATE_QUERY = """
 CREATE TABLE IF NOT EXISTS raw_data.kindergarden_near_estate (
-    estate_id INT,
+    estate_id VARCHAR(500),
     x FLOAT,
     y FLOAT,
     type VARCHAR(500),
@@ -177,7 +177,7 @@ def kindergarden_transform_1(**context):
         kindergarden_list = kindergarden_df.values.tolist()
 
         kindergarden_data = []
-        kindergarden_data.append(id)
+        kindergarden_data.append(str(id))
         kindergarden_data.append(a)
         kindergarden_data.append(b)
         kindergarden_data.append("어린이집")
@@ -212,7 +212,7 @@ def kindergarden_transform_2(**context):
         kindergarden_list = kindergarden_df.values.tolist()
 
         kindergarden_data = []
-        kindergarden_data.append(id)
+        kindergarden_data.append(str(id))
         kindergarden_data.append(a)
         kindergarden_data.append(b)
         kindergarden_data.append("어린이집")
@@ -248,7 +248,7 @@ def kindergarden_transform_3(**context):
         kindergarden_list = kindergarden_df.values.tolist()
 
         kindergarden_data = []
-        kindergarden_data.append(id)
+        kindergarden_data.append(str(id))
         kindergarden_data.append(a)
         kindergarden_data.append(b)
         kindergarden_data.append("어린이집")
@@ -284,7 +284,7 @@ def kindergarden_transform_4(**context):
         kindergarden_list = kindergarden_df.values.tolist()
 
         kindergarden_data = []
-        kindergarden_data.append(id)
+        kindergarden_data.append(str(id))
         kindergarden_data.append(a)
         kindergarden_data.append(b)
         kindergarden_data.append("어린이집")
@@ -320,7 +320,7 @@ def kindergarden_transform_5(**context):
         kindergarden_list = kindergarden_df.values.tolist()
 
         kindergarden_data = []
-        kindergarden_data.append(id)
+        kindergarden_data.append(str(id))
         kindergarden_data.append(a)
         kindergarden_data.append(b)
         kindergarden_data.append("어린이집")
@@ -356,7 +356,7 @@ def kindergarden_transform_6(**context):
         kindergarden_list = kindergarden_df.values.tolist()
 
         kindergarden_data = []
-        kindergarden_data.append(id)
+        kindergarden_data.append(str(id))
         kindergarden_data.append(a)
         kindergarden_data.append(b)
         kindergarden_data.append("어린이집")
