@@ -301,7 +301,7 @@ def get_count_real_estate():
 @dag(
     default_args=DEFAULT_ARGS,
     description="네이버부동산 매물과 다방 매물 통합시키는 DAG",
-    schedule_interval="0 12 * * *",
+    schedule_interval="0 20 * * *",
     start_date=datetime(2024, 8, 12),
     catchup=False,
     tags=["daily", "real_estate", "integrate"]

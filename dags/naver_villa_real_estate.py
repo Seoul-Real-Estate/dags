@@ -165,7 +165,7 @@ def clean_numeric_column(df, column_name):
 @dag(
     default_args=default_args,
     description="네이버부동산 빌라/주택 데이터 수집 및 적재 DAG",
-    schedule_interval='0 12 * * *',
+    schedule_interval='0 15 * * *',
     start_date=datetime(2024, 8, 4),
     catchup=False,
     tags=['daily', 'real_estate', 'naver', 'villa']
