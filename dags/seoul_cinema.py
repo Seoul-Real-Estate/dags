@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import requests
 import psycopg2
 import logging
+import time
 
 RAW_SCHEMA = "raw_data"
 ANALYTICS_SCHEMA = "analytics"
@@ -54,7 +55,7 @@ def execute_query(query, parameters=None, autocommit=True, fetchall=False, execu
         cur.execute("ROLLBACK;")
         raise
     except Exception as error:
-        print(f"execute query failed {error=}, {type(error)=}")
+        print(f"execute query failed {error}, {type(error)}")
         cur.execute("ROLLBACK;")
         raise
     finally:
@@ -73,7 +74,7 @@ def get_total_data_count():
         logging.info(f"Total count fetched: {total_count}")
         return total_count
     except Exception as error:
-        logging.error(f"API request failed: {error=}, {type(error)=}")
+        logging.error(f"API request failed: {error}, {type(error)}")
         raise
 
 
@@ -85,7 +86,7 @@ def fetch_seoul_data(start_index, end_index):
         response.raise_for_status()
         return response.json()[API_ENDPOINT]["row"]
     except Exception as error:
-        logging.error(f"API request failed: {error=}, {type(error)=}")
+        logging.error(f"API request failed: {error}, {type(error)}")
         raise
 
 
@@ -143,7 +144,7 @@ def geocode(road_address):
             district_name = None
             legal_dong_name = None
     except Exception as error:
-        logging.error(f"API request failed for address: {road_address}, {type(error)=}")
+        logging.error(f"API request failed for address: {road_address}, {error}")
         raise
 
     return latitude, longitude, district_name, legal_dong_name
@@ -208,12 +209,24 @@ def seoul_cinema():
     @task
     def add_coordinate_and_dong(records):
         geocoded_records = []
-        for record in records:
-            address = record[6] 
+        batch_size = 100  
+        pause_duration = 300  
+        request_delay = 2  
+
+        for i, record in enumerate(records):
+            address = record[6]
+
             latitude, longitude, district_name, legal_dong_name = geocode(address)
+
             geocoded_record = list(record) + [latitude, longitude, district_name, legal_dong_name]
             geocoded_records.append(tuple(geocoded_record))
-        logging.info(f"Geocoded {len(geocoded_records)} records.")
+
+            time.sleep(request_delay)
+
+            if (i + 1) % batch_size == 0:
+                time.sleep(pause_duration)
+
+        logging.info(f"Geocoded {len(geocoded_records)} records in total.")
         return geocoded_records
 
     # 원본 데이터 적재
@@ -248,7 +261,7 @@ def seoul_cinema():
         WITH FilteredData AS (
             SELECT *
             FROM raw_data.seoul_cinema
-            WHERE detailed_status = "영업중" AND road_address <> ""
+            WHERE detailed_status = '영업중' AND road_address <> ''
         ),
         RankedData AS (
             SELECT *,
