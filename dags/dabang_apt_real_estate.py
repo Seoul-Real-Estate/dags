@@ -20,8 +20,8 @@ SEOUL_CORTARNO = 1100000000
 SI_GUN_GU_FILE_NAME = "si_gun_gu.csv"
 EUP_MYEON_DONG_FILE_NAME = "eup_myeon_dong.csv"
 DABANG_APT_FILE_NAME = "dabang_apt_real_estate.csv"
-DABANG_REALTOR_FILE_NAME = "dabang_realtor.csv"
-DABANG_APT_COMPLEX_FILE_NAME = "dabang_complex.csv"
+DABANG_REALTOR_FILE_NAME = "dabang_apt_realtor.csv"
+DABANG_APT_COMPLEX_FILE_NAME = "dabang_apt_complex.csv"
 REGION_URL = "https://new.land.naver.com/api/regions/list?cortarNo="
 NAVER_SEARCH_URL = "https://map.naver.com/p/api/search/allSearch"
 NAVER_COORDINATE_URL = "https://map.naver.com/p/api/polygon"
@@ -298,47 +298,47 @@ def transform_complex_address(complex):
 
 def add_apt_detail_data(apt_df, idx, room):
     try:
-        apt_df.loc[idx, 'dabang_realtor_id'] = room.get("realtor_id")
-        apt_df.loc[idx, 'dabang_complex_id'] = room.get('complex_id')
-        apt_df.loc[idx, 'address'] = room.get('full_jibun_address_str')
-        apt_df.loc[idx, 'road_address'] = room.get('full_road_address_str')
-        apt_df.loc[idx, 'building_use_types_str'] = room.get('building_use_types_str')[0] if room.get(
-            'building_use_types_str') else None
-        apt_df.loc[idx, 'contact_number'] = room.get('call_number')
-        apt_df.loc[idx, 'memo'] = room.get('memo')
-        apt_df.loc[idx, 'rent_price'] = room.get('price_info')[0][1]
-        apt_df.loc[idx, 'dong'] = room.get('dong')
-        apt_df.loc[idx, 'ho'] = room.get('ho')
-        apt_df.loc[idx, 'saved_time_str'] = room.get('saved_time_str')  # 최초등록일
-        apt_df.loc[idx, 'roomTypeName'] = room.get('room_type_str')
-        apt_df.loc[idx, 'heating'] = room.get('heating')
-        apt_df.loc[idx, 'room_floor_str'] = room.get('room_floor_str')
-        apt_df.loc[idx, 'building_floor_str'] = room.get('building_floor_str')
-        apt_df.loc[idx, 'building_approval_date_str'] = room.get('building_approval_date_str')
-        apt_df.loc[idx, 'bath_num'] = room.get('bath_num')
-        apt_df.loc[idx, 'beds_num'] = room.get('beds_num')
-        apt_df.loc[idx, 'maintenance_cost'] = room.get('maintenance_cost')
-        apt_df.at[idx, 'hash_tags'] = room.get('hash_tags', '')
-        apt_df.loc[idx, 'parking'] = room.get('parking')
-        apt_df.loc[idx, 'parking_num'] = room.get('parking_num')
-        apt_df.loc[idx, 'elevator_str'] = room.get('elevator_str')
-        apt_df.loc[idx, 'loan_str'] = room.get('loan_str')
-        apt_df.loc[idx, 'direction_str'] = room.get('direction_str')
-        apt_df.loc[idx, 'room_size'] = room.get('room_size')  # 전용면적
-        apt_df.loc[idx, 'provision_size'] = room.get('provision_size')  # 공급면적
-        price_info = room.get('price_info')
+        apt_df.loc[idx, "dabang_realtor_id"] = room.get("realtor_id")
+        apt_df.loc[idx, "dabang_complex_id"] = room.get("complex_id")
+        apt_df.loc[idx, "address"] = room.get("full_jibun_address_str")
+        apt_df.loc[idx, "road_address"] = room.get("full_road_address_str")
+        apt_df.loc[idx, "building_use_types_str"] = room.get("building_use_types_str")[0] if room.get(
+            "building_use_types_str") else None
+        apt_df.loc[idx, "contact_number"] = room.get("call_number")
+        apt_df.loc[idx, "memo"] = room.get("memo")
+        apt_df.loc[idx, "rent_price"] = room.get("price_info")[0][1]
+        apt_df.loc[idx, "dong"] = room.get("dong")
+        apt_df.loc[idx, "ho"] = room.get("ho")
+        apt_df.loc[idx, "saved_time_str"] = room.get("saved_time_str")  # 최초등록일
+        apt_df.loc[idx, "roomTypeName"] = room.get("room_type_str")
+        apt_df.loc[idx, "heating"] = room.get("heating")
+        apt_df.loc[idx, "room_floor_str"] = room.get("room_floor_str")
+        apt_df.loc[idx, "building_floor_str"] = room.get("building_floor_str")
+        apt_df.loc[idx, "building_approval_date_str"] = room.get("building_approval_date_str")
+        apt_df.loc[idx, "bath_num"] = room.get("bath_num")
+        apt_df.loc[idx, "beds_num"] = room.get("beds_num")
+        apt_df.loc[idx, "maintenance_cost"] = room.get("maintenance_cost")
+        apt_df.at[idx, "hash_tags"] = room.get("hash_tags", "")
+        apt_df.loc[idx, "parking"] = room.get("parking")
+        apt_df.loc[idx, "parking_num"] = room.get("parking_num")
+        apt_df.loc[idx, "elevator_str"] = room.get("elevator_str")
+        apt_df.loc[idx, "loan_str"] = room.get("loan_str")
+        apt_df.loc[idx, "direction_str"] = room.get("direction_str")
+        apt_df.loc[idx, "room_size"] = room.get("room_size")  # 전용면적
+        apt_df.loc[idx, "provision_size"] = room.get("provision_size")  # 공급면적
+        price_info = room.get("price_info")
         if price_info[0][2] == 2:  # 매매
-            apt_df.loc[idx, 'deal_price'] = price_info[0][0]
+            apt_df.loc[idx, "deal_price"] = price_info[0][0]
         else:
-            apt_df.loc[idx, 'warrant_price'] = price_info[0][0]
+            apt_df.loc[idx, "warrant_price"] = price_info[0][0]
 
-        if room.get('room_options') is not None:
-            room_option_names = [item['name'] for item in room.get('room_options')]
-            apt_df.at[idx, 'room_options'] = room_option_names
+        if room.get("room_options") is not None:
+            room_option_names = [item["name"] for item in room.get("room_options")]
+            apt_df.at[idx, "room_options"] = room_option_names
 
-        if room.get('safeties') is not None:
-            safeties_names = [item['name'] for item in room.get('safeties')]
-            apt_df.at[idx, 'safeties'] = safeties_names
+        if room.get("safeties") is not None:
+            safeties_names = [item["name"] for item in room.get("safeties")]
+            apt_df.at[idx, "safeties"] = safeties_names
 
     except Exception as e:
         logging.error(f"Failed to process room data for index {idx} with error: {e}; room data: {room}")
@@ -352,7 +352,7 @@ def fill_missing_dabang_numeric_values(df, columns):
 
 @dag(
     default_args=default_args,
-    description="다방 아파트 단지 및 매물 데이터 수집 및 적재 DAG",
+    description="다방 아파트 단지 및 매물, 공인중개사 데이터 수집 및 적재 DAG",
     schedule_interval="0 12 * * *",
     start_date=datetime(2024, 8, 10),
     catchup=False,
@@ -532,20 +532,14 @@ def dabang_apt_real_estate():
                 # 공인중개사 정보가 없는 경우는 직거래
                 realtor_id = ""
                 if realtor is not None:
-                    logging.info(f"room_id: {row["id"]}")
-                    logging.info(realtor)
                     if realtor.get("location") is not None:
                         realtor["longitude"] = realtor["location"][0]
                         realtor["latitude"] = realtor["location"][1]
                     else:
                         realtor["longitude"] = 0.0
                         realtor["latitude"] = 0.0
-                    logging.info(
-                        f"{row['id']} | realtor longitude: '{realtor['longitude']}' latitude: '{realtor['latitude']}'")
                     realtor_infos.append(realtor)
                     realtor_id = realtor.get("id", "")
-                else:
-                    logging.info(f"{row['id']} | realtor information is missing.")
 
                 room["realtor_id"] = realtor_id
                 room["complex_id"] = complex.get("complex_id")

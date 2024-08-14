@@ -1,199 +1,228 @@
-from airflow import DAG
-from airflow.decorators import task
+from airflow.decorators import task, dag
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.models import Variable
 from datetime import datetime, timedelta
 import requests
 import psycopg2
-import time
 import logging
 
-# Redshift 연결 함수
-def get_redshift_connection(autocommit=True):
-    hook = PostgresHook(postgres_conn_id='redshift_dev')
-    conn = hook.get_conn()
-    conn.autocommit = autocommit
-    return conn.cursor()
+SCHEMA = "raw_data"
+TEMP_TABLE = "temp_seoul_academy"
+MAIN_TABLE = "seoul_academy"
 
-# 임시 테이블 생성 task
-@task
-def create_temp_table(schema, temp_table):
-    cur = get_redshift_connection()
-    create_query = f"""
-    DROP TABLE IF EXISTS {schema}.{temp_table};
-    CREATE TABLE {schema}.{temp_table} (
-        id INT IDENTITY(1, 1) PRIMARY KEY,
-        district_name VARCHAR(50),
-        academy_code VARCHAR(50),
-        academy_name VARCHAR(100),
-        total_capacity INT,
-        category_name VARCHAR(100),
-        course_name VARCHAR(100),
-        postal_code VARCHAR(6),
-        road_address VARCHAR(255),
-        detailed_road_address VARCHAR(255),
-        latitude FLOAT,
-        longitude FLOAT,
-        legal_dong_name VARCHAR(30)
-    );
-    """
-    cur.execute(create_query)
+SEOUL_API_BASE_URL = "http://openapi.seoul.go.kr:8088/"
+SEOUL_API_ENDPOINT = "json/neisAcademyInfo"
+KAKAO_GEOCODE_URL = "https://dapi.kakao.com/v2/local/search/address.json"
+
+SEOUL_API_KEY = Variable.get("seoul_api_key")
+KAKAO_API_KEY = Variable.get("kakao_api_key")
+
+# Redshift 연결 함수
+def get_redshift_connection():
+    hook = PostgresHook(postgres_conn_id="redshift_dev")
+    conn = hook.get_conn()
+    conn.autocommit = False
+    return conn
+
+
+# 쿼리 실행 함수
+def execute_query(query, parameters=None, fetchall=False, executemany=False):
+    conn = get_redshift_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("BEGIN;")
+        if parameters:
+            if executemany:
+                cur.executemany(query, parameters)
+            else:
+                cur.execute(query, parameters)
+        else:
+            cur.execute(query)
+        
+        if fetchall:
+            results = cur.fetchall()
+        cur.execute("COMMIT;")
+        if fetchall:
+            return results
+    except (Exception, psycopg2.DatabaseError) as error:
+        logging.error(f"Error during query execution: {error}")
+        cur.execute("ROLLBACK;")
+        raise
+    finally:
+        cur.close()
+        conn.close()
+
 
 # API 요청 응답 대한 전체 데이터의 개수를 반환하는 함수
-def get_list_total_count():
-    api_key = Variable.get('seoul_api_key')
-    url = f"http://openapi.seoul.go.kr:8088/{api_key}/json/neisAcademyInfo/1/1"
+def get_total_data_count():
+    url = f"{SEOUL_API_BASE_URL}{SEOUL_API_KEY}/{SEOUL_API_ENDPOINT}/1/1"
     try:
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
-        total_count = data["neisAcademyInfo"]["list_total_count"]
-        return total_count
+        return data["neisAcademyInfo"]["list_total_count"]
     except requests.RequestException as error:
         logging.error(f"API request failed: {error}")
         raise
 
-# 데이터 수집 task
-@task
-def process_data():
-    api_key = Variable.get('seoul_api_key')
-    start_index = 1
-    unit_value=1000
+
+# 학원 데이터를 API에서 가져오는 함수
+def fetch_data(start_index, end_index):
+    url = f"{SEOUL_API_BASE_URL}{SEOUL_API_KEY}/{SEOUL_API_ENDPOINT}/{start_index}/{end_index}"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.json().get("neisAcademyInfo", {}).get("row", [])
+    except requests.RequestException as error:
+        logging.error(f"API request failed for range {start_index}-{end_index}: {error}")
+        raise
+
+
+# 데이터를 변환하는 함수
+def transform_data(data_list):
     records = []
-
-    total_count = get_list_total_count()
-
-    # unit_value 단위로 나누어 api 요청
-    while start_index <= total_count:
-        end_index = min(start_index + unit_value - 1, total_count)
-        url = f"http://openapi.seoul.go.kr:8088/{api_key}/json/neisAcademyInfo/{start_index}/{end_index}"
-        try:
-            response = requests.get(url)
-            response.raise_for_status()
-            data_list = response.json()["neisAcademyInfo"]["row"]
-            
-            for data in data_list:
-                record = (
-                    data['ADMST_ZONE_NM'],
-                    data['ACA_ASNUM'],
-                    data['ACA_NM'],
-                    int(data['TOFOR_SMTOT']),
-                    data['REALM_SC_NM'],
-                    data['LE_CRSE_NM'],
-                    data['FA_RDNZC'],
-                    data['FA_RDNMA'],
-                    data['FA_RDNDA']
-                )
-                records.append(record)
-            
-            start_index += unit_value
-        except requests.RequestException as error:
-            logging.error(f"API request failed: {error}")
-            raise
+    for data in data_list:
+        record = (
+            data.get("ADMST_ZONE_NM"),
+            data.get("ACA_ASNUM"),
+            data.get("ACA_NM"),
+            int(data.get("TOFOR_SMTOT", 0)),
+            data.get("REALM_SC_NM"),
+            data.get("LE_CRSE_NM"),
+            data.get("FA_RDNZC"),
+            data.get("FA_RDNMA"),
+            data.get("FA_RDNDA")
+        )
+        records.append(record)
 
     return records
 
-# 위/경도 좌표값 추가하는 task
-@task
-def geocode(records):
-    geocoded_records = []
-    kakao_api_key = Variable.get('kakao_api_key')
 
-    for record in records:
-        road_address = record[7]  # 주소값 'FA_RDNMA'
-        
-        # 기본값 설정 - 예외가 발생하면 아래의 기본값이 사용됨
-        latitude = None
-        longitude = None
-        legal_dong_name = None
-
-        if not road_address:
-            geocoded_records.append(list(record) + [latitude, longitude, legal_dong_name])
-            continue
-
-        # Kakao API를 사용하여 주소를 좌표로 변환
-        url = f'https://dapi.kakao.com/v2/local/search/address.json?query={road_address}&analyze_type=exact'
-        headers = {"Authorization": kakao_api_key}
-
-        try:
-            response = requests.get(url, headers=headers)
-            response.raise_for_status()
-
-            # 주소 정보에서 좌표 정보 추출
-            documents = response.json().get('documents', [])
-
-            try:
-                latitude = round(float(documents[0]['y']), 6)
-                longitude = round(float(documents[0]['x']), 6)
-                legal_dong_name = documents[0]['road_address']['region_3depth_name']  # 법정동 
-            except (IndexError, KeyError, AttributeError, TypeError):
-                pass  # 기본값이 유지되도록 하고, 에러 무시
-
-            geocoded_record = list(record) + [latitude, longitude, legal_dong_name]
-            geocoded_records.append(tuple(geocoded_record))
-
-        except requests.RequestException as error:
-            logging.error(f"Error RequestException {road_address}: {error}")
-            raise
-
-        time.sleep(0.1) 
-
-    return geocoded_records
-
-# redshift 임시 테이블에 적재하는 task
-@task
-def load_temp_table(schema, temp_table, records):
-    cur = get_redshift_connection(False)
+# 주소 데이터로 좌표 데이터와 법정동명 받아오는 함수
+def geocode(address):
+    params = {"query": address}
+    headers = {"Authorization": f"KakaoAK {KAKAO_API_KEY}"}
     try:
-        cur.execute("BEGIN;")
+        response = requests.get(KAKAO_GEOCODE_URL, headers=headers, params=params)
+        response.raise_for_status()
+        data = response.json().get("documents", [])
+        try:
+            latitude = float(data[0]["y"])
+            longitude = float(data[0]["x"])
+            legal_dong_name = data[0].get("road_address", {}).get("region_3depth_name", None)
+        except (IndexError, KeyError, TypeError, AttributeError) as e:
+            logging.warning(f"Error processing geocode response address {address}: {e}")
+            latitude = None
+            longitude = None
+            legal_dong_name = None
+    except requests.RequestException as e:
+        logging.error(f"Failed to geocode address {address}: {e}")
+        raise
+
+    return latitude, longitude, legal_dong_name
+
+
+@dag(
+    start_date=datetime(2024, 7, 10),
+    schedule_interval="0 10 * * 6",  # 토요일 오전 10시 실행
+    catchup=False,
+    tags=["academy", "raw_data", "infra"],
+    default_args={
+        "owner": "kain",
+        "retries": 2,
+        "retry_delay": timedelta(minutes=5),
+    }
+)
+def seoul_academy():
+
+    # 테이블 생성
+    @task
+    def create_temp_table():
+        create_query = f"""
+        DROP TABLE IF EXISTS {SCHEMA}.{TEMP_TABLE};
+        CREATE TABLE {SCHEMA}.{TEMP_TABLE} (
+            id INT IDENTITY(1, 1) PRIMARY KEY,
+            district_name VARCHAR(50),
+            academy_code VARCHAR(50),
+            academy_name VARCHAR(100),
+            total_capacity INT,
+            category_name VARCHAR(100),
+            course_name VARCHAR(100),
+            postal_code VARCHAR(6),
+            road_address VARCHAR(255),
+            detailed_road_address VARCHAR(255),
+            latitude FLOAT,
+            longitude FLOAT,
+            legal_dong_name VARCHAR(30)
+        );
+        """
+        execute_query(create_query)
+
+
+    # 데이터 수집 및 변형 
+    @task
+    def process_data():
+        start_index = 1
+        unit_value = 1000
+        total_count = get_total_data_count()
+        all_records = []
+        
+        while start_index <= total_count:
+            end_index = min(start_index + unit_value - 1, total_count)
+            data_list = fetch_data(start_index, end_index)
+            records = transform_data(data_list)
+            all_records.extend(records)
+            start_index += unit_value
+        
+        return all_records
+        
+
+    # 위/경도 좌표값 추가
+    @task
+    def add_coordinate(records):
+        geocoded_records = []
+
+        for record in records:
+            road_address = record[7]  # 주소 FA_RDNMA
+            if not road_address:
+                geocoded_records.append(list(record) + [None, None, None])
+                continue
+
+            latitude, longitude, legal_dong_name = geocode(road_address)
+            geocoded_records.append(tuple(list(record) + [latitude, longitude, legal_dong_name]))
+
+        return geocoded_records
+
+
+    # 데이터 적재 
+    @task
+    def load_temp_table(records):
         insert_query = f"""
-        INSERT INTO {schema}.{temp_table} (
+        INSERT INTO {SCHEMA}.{TEMP_TABLE} (
             district_name, academy_code, academy_name, 
             total_capacity, category_name, course_name,
             postal_code, road_address, detailed_road_address,
             latitude, longitude, legal_dong_name
         ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
-        for record in records:
-            cur.execute(insert_query, record)
-        cur.execute("COMMIT;")
-    except (Exception, psycopg2.DatabaseError) as error:
-        logging.error(error)
-        cur.execute("ROLLBACK;")
-        raise
+        execute_query(insert_query, parameters=records, executemany=True)
 
-# 임시 테이블을 원본 테이블로 변경하는 task
-@task
-def swap_tables(schema, temp_table, main_table):
-    cur = get_redshift_connection(False)
-    try:
-        cur.execute("BEGIN;")
-        cur.execute(f"DROP TABLE IF EXISTS {schema}.{main_table};")
-        cur.execute(f"ALTER TABLE {schema}.{temp_table} RENAME TO {main_table};")
-        cur.execute("COMMIT;")
-    except (Exception, psycopg2.DatabaseError) as error:
-        logging.error(error)
-        cur.execute("ROLLBACK;")
-        raise
+    # 테이블 이름 변경 
+    @task
+    def rename_tables():
+        rename_query = f"""
+        DROP TABLE IF EXISTS {SCHEMA}.{MAIN_TABLE};
+        ALTER TABLE {SCHEMA}.{TEMP_TABLE} RENAME TO {MAIN_TABLE};
+        """
+        execute_query(rename_query)
 
-with DAG(
-    dag_id='seoul_academy_v2',
-    start_date=datetime(2024, 7, 10),
-        schedule_interval='0 1 * * 6',  # 한국 기준 토요일 오전 10시 실행 
-    catchup=False,
-    default_args={
-        'retries': 1,
-        'retry_delay': timedelta(minutes=5),
-    }
-) as dag:
-    schema = 'raw_data'
-    temp_table = 'temp_seoul_academy'
-    main_table = 'seoul_academy'
+    create_temp_table_task = create_temp_table()
+    process_data_task = process_data()
+    geocode_task = add_coordinate(process_data_task)
+    load_temp_table_task = load_temp_table(geocode_task)
+    rename_tables_task = rename_tables()
 
-    create_temp_table_task = create_temp_table(schema, temp_table)
-    process_data_task = process_data()  
-    geocode_task = geocode(process_data_task)
-    load_temp_table_task = load_temp_table(schema, temp_table, geocode_task)
-    swap_tables_task = swap_tables(schema, temp_table, main_table)
+    create_temp_table_task >> process_data_task >> geocode_task >> load_temp_table_task >> rename_tables_task
 
-    create_temp_table_task >> process_data_task >> geocode_task >> load_temp_table_task >> swap_tables_task
+seoul_academy()
