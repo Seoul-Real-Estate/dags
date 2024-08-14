@@ -1,10 +1,9 @@
-import ast, re, time, requests, logging, json
-
+import logging
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 from io import StringIO
-from airflow.decorators import task, dag, task_group
+from airflow.decorators import task, dag
 from airflow.models import Variable
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.providers.amazon.aws.hooks.redshift_sql import RedshiftSQLHook
@@ -83,40 +82,6 @@ def get_df_from_s3_csv(file_name, dtype_spec=None):
         )
         raise
 
-
-# (id) | articleno | id
-# (complex_id) | complexno | dabang_complex_id
-# (realtor_id) | realtorid | dabang_realtor_id
-# (room_type) | realestatetypename | roomtypename
-# (trade_type) | tradetypename | pricetypename
-# (room_floor) | correspondingfloorcount | room_floor_str
-# (building_floor) | totalfloorcount | building_floor_str
-# (supply_area) | supply_area | room_size
-# (exclusive_area) | exclusive_area | provision_size
-# (direction) | direction | direction_str
-# (deal_price) | dealprice | deal_price
-# (warrant_price) | warrantprice | warrant_price
-# (rent_price) | rentprice | rent_price
-# (room_title) | articlefeaturedesc | roomtitle
-# (description) | detaildescription | memo
-# (hash_tags) | taglist | hash_tags
-# (latitude) | latitude | latitude
-# (longitude) | longitude | longitude
-# (address) | exposureaddress | address
-# (road_address) | roadaddress | road_address
-# (etc_address) | etcaddress | 없음
-# (ho_num) | honm | ho
-# (dong_num) | buildingname | dong
-# (parking_count) | parkingcount | parking_num
-# (is_parking) | parkingpossibleyn | parking
-# (room_count) | roomcount | beds_num
-# (bath_count) | bathroomcount | bath_num
-# (room_options) | roomfacilities | room_options
-# (safe_options) | buildingfacilities | safeties
-# (approve_date) | useapproveymd | building_approval_date_str
-# (expose_start_date) | exposestartymd | saved_time_str
-# (heat_type) | heatmethodtypename | heating
-# (heat_fuel_type) | heatfueltypename | fuel_type_str (단지 컬럼)
 
 def get_dabang_real_estate_not_in(pk_list):
     cur = get_redshift_connection()
