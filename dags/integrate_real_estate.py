@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 from io import StringIO
+
+import requests
 from airflow.decorators import task, dag
 from airflow.models import Variable
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
@@ -15,6 +17,7 @@ PREFIX_TRANSFORM = "transform_"
 PREFIX_DATA = "data/"
 NAVER_REAL_ESTATE_FILE_NAME = "naver_real_estate.csv"
 DABANG_REAL_ESTATE_FILE_NAME = "dabang_real_estate.csv"
+VWORLD_URL = "https://api.vworld.kr/req/address?"
 DEFAULT_ARGS = {
     "owner": "yong",
     "depends_on_past": False,
@@ -90,6 +93,11 @@ def get_new_dabang_real_estate():
         dr.id as id, 
         dr.dabang_complex_id as complex_id, 
         dr.dabang_realtor_id as realtor_id, 
+        CASE
+            WHEN dr.roomtypename LIKE '쓰리룸%' THEN '빌라'
+            WHEN dr.roomtypename LIKE '원룸%' OR dr.roomtypename LIKE '투룸%' THEN '원룸'
+            WHEN dr.roomtypename LIKE '아파트%' OR dr.roomtypename LIKE '오피스텔%' THEN dc.complex_name
+        END as room_name,
         dr.roomtypename as room_type, 
         dr.pricetypename as trade_type, 
         dr.room_floor_str as room_floor, 
@@ -105,6 +113,9 @@ def get_new_dabang_real_estate():
         dr.hash_tags as hash_tags,
         dr.latitude as latitude,
         dr.longitude as longitude,
+        '' as cortar_no,
+        NULL as region_gu,
+        NULL as region_dong,
         dr.address as address,
         dr.road_address as road_address,
         '' as etc_address,
@@ -145,6 +156,11 @@ def get_new_naver_real_estate():
         nr.articleno as id, 
         nr.complexno as complex_id, 
         nr.realtorid as realtor_id, 
+        CASE 
+            WHEN nr.realestatetypename LIKE '아파트%' THEN nr.articlename
+            WHEN nr.realestatetypename LIKE '오피스텔%' THEN nr.articlename
+            ELSE nr.realestatetypename 
+        END as room_name,
         nr.realestatetypename as room_type, 
         nr.tradetypename as trade_type, 
         nr.correspondingfloorcount as room_floor, 
@@ -160,6 +176,9 @@ def get_new_naver_real_estate():
         nr.taglist as hash_tags,
         nr.latitude as latitude,
         nr.longitude as longitude,
+        '' as cortar_no,
+        '' as region_gu,
+        '' as region_dong,
         nr.exposureaddress as address,
         nr.roadaddress as road_address,
         nr.etcaddress as etc_address,
@@ -283,6 +302,39 @@ def get_count_real_estate():
     return cur.fetchone()[0]
 
 
+def get_coordinate_convert_address(latitude, longitude):
+    params = {
+        "service": "address",
+        "request": "getaddress",
+        "crs": "epsg:4326",
+        "point": f"{longitude},{latitude}",
+        "format": "json",
+        "type": "parcel",
+        "key": Variable.get("vworld_key")
+    }
+    try:
+        res = requests.get(VWORLD_URL, params=params)
+        res.raise_for_status()
+        result = res.json()["response"]["result"][0]
+        structure = result.get("structure")
+        return {
+            "address": result.get("text", ""),
+            "region_gu": structure.get("level2", ""),
+            "region_dong": structure.get("level4L", ""),
+            "cortar_no": structure.get("level4LC", ""),
+            "room_name": structure.get("detail", "")
+        }
+    except requests.exceptions.HTTPError as he:
+        logging.error(f"Error '{he.response}' message: '{res.text}' error: '{he}'")
+        return None
+    except KeyError as ke:
+        logging.error(f"Error KeyError {ke}")
+        return None
+    except Exception as e:
+        logging.warning(f"Error [get_apt_detail_info] message:'{e}'")
+        raise
+
+
 @dag(
     default_args=DEFAULT_ARGS,
     description="네이버부동산 매물과 다방 매물 통합시키는 DAG",
@@ -306,9 +358,19 @@ def integrate_real_estate():
     def transform_naver_new_real_estate():
         today_naver_file_name = get_today_file_name(PREFIX_INTEGRATE + NAVER_REAL_ESTATE_FILE_NAME)
         naver_df = get_df_from_s3_csv(today_naver_file_name)
-        str_columns = ["id", "complex_id", "realtor_id", "room_type", "trade_type", "room_floor", "building_floor",
-                       "direction", "room_title", "description", "hash_tags", "address", "road_address", "etc_address",
-                       "is_parking", "heat_type", "heat_fuel_type"]
+        for idx, row in naver_df.iterrows():
+            _json = get_coordinate_convert_address(row["latitude"], row["longitude"])
+            if _json:
+                naver_df.loc[idx, "address"] = _json.get("address")
+                naver_df.loc[idx, "room_name"] = _json.get("room_name")
+                naver_df.loc[idx, "region_gu"] = _json.get("region_gu")
+                naver_df.loc[idx, "region_dong"] = _json.get("region_dong")
+                naver_df.loc[idx, "cortar_no"] = _json.get("cortar_no")
+
+        str_columns = ["id", "complex_id", "realtor_id", "room_name", "room_type", "trade_type", "room_floor",
+                       "building_floor", "direction", "room_title", "description", "hash_tags", "region_gu",
+                       "region_dong", "address", "road_address", "etc_address", "is_parking", "heat_type",
+                       "heat_fuel_type"]
         naver_df = fill_null_with_dash(naver_df, str_columns)
         naver_df["room_options"] = naver_df["room_options"].fillna("[]")
         naver_df["safe_options"] = naver_df["safe_options"].fillna("[]")
@@ -357,9 +419,19 @@ def integrate_real_estate():
     def transform_dabang_new_real_estate():
         today_dabang_file_name = get_today_file_name(PREFIX_INTEGRATE + DABANG_REAL_ESTATE_FILE_NAME)
         dabang_df = get_df_from_s3_csv(today_dabang_file_name)
-        str_columns = ["id", "complex_id", "realtor_id", "room_type", "trade_type", "room_floor", "building_floor",
-                       "direction", "room_title", "description", "hash_tags", "address", "road_address", "etc_address",
-                       "is_parking", "heat_type", "heat_fuel_type"]
+        for idx, row in dabang_df.iterrows():
+            _json = get_coordinate_convert_address(row["latitude"], row["longitude"])
+            if _json:
+                dabang_df.loc[idx, "address"] = _json.get("address")
+                dabang_df.loc[idx, "room_name"] = _json.get("room_name")
+                dabang_df.loc[idx, "region_gu"] = _json.get("region_gu")
+                dabang_df.loc[idx, "region_dong"] = _json.get("region_dong")
+                dabang_df.loc[idx, "cortar_no"] = _json.get("cortar_no")
+
+        str_columns = ["id", "complex_id", "realtor_id", "room_name", "room_type", "trade_type", "room_floor",
+                       "building_floor", "direction", "room_title", "description", "hash_tags", "region_gu",
+                       "region_dong", "address", "road_address", "etc_address", "is_parking", "heat_type",
+                       "heat_fuel_type"]
         dabang_df = fill_null_with_dash(dabang_df, str_columns)
         dabang_df["room_options"] = dabang_df["room_options"].fillna("[]")
         dabang_df["safe_options"] = dabang_df["safe_options"].fillna("[]")

@@ -109,8 +109,11 @@ def get_create_table_sqls(schema):
                 road_address    VARCHAR(255),
                 latitude        FLOAT,
                 longitude       FLOAT,
-                parking_num     INTEGER,
+                parking_count   INTEGER,
                 approve_date    DATE,
+                provider_name   VARCHAR(255),
+                heat_type       VARCHAR(255),
+                heat_fuel_type  VARCHAR(255),
                 platform        VARCHAR(255),
                 created_at      TIMESTAMP,
                 updated_at      TIMESTAMP
@@ -240,6 +243,7 @@ def get_create_table_sqls(schema):
                 id                      VARCHAR(255) PRIMARY KEY,
                 complex_id              VARCHAR(255),
                 realtor_id              VARCHAR(255),
+                room_name               VARCHAR(255),
                 room_type               VARCHAR(255),
                 trade_type              VARCHAR(255),
                 room_floor               VARCHAR(255),
@@ -255,6 +259,9 @@ def get_create_table_sqls(schema):
                 hash_tags               VARCHAR(2000),
                 latitude                FLOAT,
                 longitude               FLOAT,
+                cortar_no               VARCHAR(255),
+                region_gu               VARCHAR(255),
+                region_dong             VARCHAR(255),
                 address                 VARCHAR(500),
                 road_address            VARCHAR(500),
                 etc_address             VARCHAR(1000),
@@ -278,6 +285,7 @@ def get_create_table_sqls(schema):
             );
         """
     }
+
 
 def get_redshift_connection(autocommit=True):
     hook = PostgresHook(postgres_conn_id='redshift_dev_db')
