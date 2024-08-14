@@ -322,7 +322,6 @@ def get_coordinate_convert_address(latitude, longitude):
             "region_gu": structure.get("level2", ""),
             "region_dong": structure.get("level4L", ""),
             "cortar_no": structure.get("level4LC", ""),
-            "room_name": structure.get("detail", "")
         }
     except requests.exceptions.HTTPError as he:
         logging.error(f"Error '{he.response}' message: '{res.text}' error: '{he}'")
@@ -362,7 +361,6 @@ def integrate_real_estate():
             _json = get_coordinate_convert_address(row["latitude"], row["longitude"])
             if _json:
                 naver_df.loc[idx, "address"] = _json.get("address")
-                naver_df.loc[idx, "room_name"] = _json.get("room_name")
                 naver_df.loc[idx, "region_gu"] = _json.get("region_gu")
                 naver_df.loc[idx, "region_dong"] = _json.get("region_dong")
                 naver_df.loc[idx, "cortar_no"] = _json.get("cortar_no")
@@ -423,7 +421,6 @@ def integrate_real_estate():
             _json = get_coordinate_convert_address(row["latitude"], row["longitude"])
             if _json:
                 dabang_df.loc[idx, "address"] = _json.get("address")
-                dabang_df.loc[idx, "room_name"] = _json.get("room_name")
                 dabang_df.loc[idx, "region_gu"] = _json.get("region_gu")
                 dabang_df.loc[idx, "region_dong"] = _json.get("region_dong")
                 dabang_df.loc[idx, "cortar_no"] = _json.get("cortar_no")
