@@ -607,6 +607,5 @@ load_to_redshift_task = PythonOperator(
 CreatecultureTable >> GetDataCount >> DecideNextTask >> ExtractUniqueEstate
 DecideNextTask >> ExtractAllEstate >> DummyJoin
 DecideNextTask >> ExtractUniqueEstate >> DummyJoin
-DummyJoin >> TransformEstateData >> culture_extract_task >> [culture_transform_task_1, culture_transform_task_2, culture_transform_task_3, culture_transform_task_4, culture_transform_task_5, culture_transform_task_6]
-[culture_transform_task_1, culture_transform_task_2, culture_transform_task_3, culture_transform_task_4, culture_transform_task_5, culture_transform_task_6] >> combine_all_data_task
-combine_all_data_task >> load_to_csv_task >> upload_to_S3_task >> load_to_redshift_task
+DummyJoin >> TransformEstateData >> culture_extract_task >> culture_transform_task_1 >> culture_transform_task_2 >> culture_transform_task_3 >> culture_transform_task_4 >> culture_transform_task_5 >> culture_transform_task_6
+culture_transform_task_6 >> combine_all_data_task >> load_to_csv_task >> upload_to_S3_task >> load_to_redshift_task
