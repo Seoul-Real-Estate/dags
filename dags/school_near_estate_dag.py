@@ -608,6 +608,6 @@ load_to_redshift_task = PythonOperator(
 CreateschoolTable >> GetDataCount >> DecideNextTask >> ExtractUniqueEstate
 DecideNextTask >> ExtractAllEstate >> DummyJoin
 DecideNextTask >> ExtractUniqueEstate >> DummyJoin
-DummyJoin >> TransformEstateData >> school_extract_task >> [school_transform_task_1, school_transform_task_2, school_transform_task_3, school_transform_task_4, school_transform_task_5, school_transform_task_6]
-[school_transform_task_1, school_transform_task_2, school_transform_task_3, school_transform_task_4, school_transform_task_5, school_transform_task_6] >> combine_all_data_task
+DummyJoin >> TransformEstateData >> school_extract_task >> school_transform_task_1 >> school_transform_task_2 >> school_transform_task_3 >> school_transform_task_4 >> school_transform_task_5 >> school_transform_task_6
+school_transform_task_6 >> combine_all_data_task
 combine_all_data_task >> load_to_csv_task >> upload_to_S3_task >> load_to_redshift_task
