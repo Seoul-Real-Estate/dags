@@ -344,7 +344,7 @@ def get_dabang_villa_address(room_id):
 @dag(
     default_args=default_args,
     description="다방 빌라 매물, 공인중개사 데이터 수집 및 적재 DAG",
-    schedule_interval="0 12 * * *",
+    schedule_interval="0 13 * * *",
     start_date=datetime(2024, 8, 10),
     catchup=False,
     tags=["daily", "real_estate", "dabang", "villa"]

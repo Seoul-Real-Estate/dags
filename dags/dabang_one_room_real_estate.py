@@ -334,7 +334,7 @@ def get_all_dabang_realtor_pk():
 @dag(
     default_args=default_args,
     description="다방 원룸 매물, 공인중개사 데이터 수집 및 적재 DAG",
-    schedule_interval="0 12 * * *",
+    schedule_interval="0 14 * * *",
     start_date=datetime(2024, 8, 11),
     catchup=False,
     tags=["daily", "real_estate", "dabang", "one_room"]
