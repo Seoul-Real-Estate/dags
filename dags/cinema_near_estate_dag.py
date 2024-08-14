@@ -533,6 +533,5 @@ load_to_redshift_task = PythonOperator(
 CreatecinemaTable >> GetDataCount >> DecideNextTask >> ExtractUniqueEstate
 DecideNextTask >> ExtractAllEstate >> DummyJoin
 DecideNextTask >> ExtractUniqueEstate >> DummyJoin
-DummyJoin >> TransformEstateData >> cinema_extract_task >> [cinema_transform_task_1, cinema_transform_task_2, cinema_transform_task_3, cinema_transform_task_4, cinema_transform_task_5, cinema_transform_task_6]
-[cinema_transform_task_1, cinema_transform_task_2, cinema_transform_task_3, cinema_transform_task_4, cinema_transform_task_5, cinema_transform_task_6] >> combine_all_data_task
-combine_all_data_task >> load_to_csv_task >> upload_to_S3_task >> load_to_redshift_task
+DummyJoin >> TransformEstateData >> cinema_extract_task >> cinema_transform_task_1 >> cinema_transform_task_2 >> cinema_transform_task_3 >> cinema_transform_task_4 >> cinema_transform_task_5 >> cinema_transform_task_6 
+cinema_transform_task_6 >> combine_all_data_task >> load_to_csv_task >> upload_to_S3_task >> load_to_redshift_task
