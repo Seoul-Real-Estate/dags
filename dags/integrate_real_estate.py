@@ -83,7 +83,7 @@ def get_df_from_s3_csv(file_name, dtype_spec=None):
         raise
 
 
-def get_dabang_real_estate_not_in(pk_list):
+def get_new_dabang_real_estate():
     cur = get_redshift_connection()
     query = f"""
     SELECT 
@@ -126,14 +126,11 @@ def get_dabang_real_estate_not_in(pk_list):
     FROM {SCHEMA}.dabang_real_estate dr
     LEFT JOIN {SCHEMA}.dabang_complex dc
         ON dr.dabang_complex_id = dc.complex_id
+    LEFT JOIN {SCHEMA}.real_estate re
+        ON re.id = dr.id AND re.platform = 'dabang'
+    WHERE re.id is NULL
     """
-    if pk_list:
-        placeholders = ",".join(["%s"] * len(pk_list))
-        query = query + f" WHERE id NOT IN ({placeholders})"
-        cur.execute(query, tuple(pk_list))
-    else:
-        cur.execute(query)
-
+    cur.execute(query)
     rows = cur.fetchall()
     columns = [desc[0] for desc in cur.description]
     df = pd.DataFrame(rows, columns=columns)
@@ -141,7 +138,7 @@ def get_dabang_real_estate_not_in(pk_list):
     return df
 
 
-def get_naver_real_estate_not_in(pk_list):
+def get_new_naver_real_estate():
     cur = get_redshift_connection()
     query = f"""
     SELECT 
@@ -184,28 +181,16 @@ def get_naver_real_estate_not_in(pk_list):
     FROM {SCHEMA}.naver_real_estate nr
     LEFT JOIN {SCHEMA}.naver_complex nc
         ON nr.complexno = nc.complexno
+    LEFT JOIN {SCHEMA}.real_estate re
+        ON re.id = nr.articleno AND re.platform = 'naver'
+    WHERE re.id IS NULL
     """
-
-    if pk_list:
-        placeholders = ",".join(["%s"] * len(pk_list))
-        query = query + f" WHERE articleno NOT IN ({placeholders})"
-        cur.execute(query, tuple(pk_list))
-    else:
-        cur.execute(query)
-
+    cur.execute(query)
     rows = cur.fetchall()
     columns = [desc[0] for desc in cur.description]
     df = pd.DataFrame(rows, columns=columns)
     cur.close()
     return df
-
-
-def get_all_real_estate_pk_of(platform):
-    cur = get_redshift_connection()
-    cur.execute(f"SELECT id FROM {SCHEMA}.real_estate WHERE platform = %s", platform)
-    rows = cur.fetchall()
-    cur.close()
-    return [row[0] for row in rows]
 
 
 def convert_int_to_str(value):
@@ -309,8 +294,7 @@ def get_count_real_estate():
 def integrate_real_estate():
     @task.short_circuit
     def fetch_naver_new_real_estate():
-        real_estate_ids = get_all_real_estate_pk_of("naver")
-        new_naver_real_estate_df = get_naver_real_estate_not_in(real_estate_ids)
+        new_naver_real_estate_df = get_new_naver_real_estate()
         if new_naver_real_estate_df.empty:
             return False
 
@@ -361,8 +345,7 @@ def integrate_real_estate():
 
     @task.short_circuit
     def fetch_dabang_new_real_estate():
-        real_estate_ids = get_all_real_estate_pk_of("dabang")
-        new_dabang_real_estate_df = get_dabang_real_estate_not_in(real_estate_ids)
+        new_dabang_real_estate_df = get_new_dabang_real_estate()
         if new_dabang_real_estate_df.empty:
             return False
 
