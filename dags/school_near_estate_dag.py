@@ -33,7 +33,7 @@ dag = DAG(
 #  테이블 생성 쿼리
 CREATE_QUERY = """
 CREATE TABLE IF NOT EXISTS raw_data.school_near_estate (
-    estate_id VARCHAR(500),
+    estate_id INT,
     x FLOAT,
     y FLOAT,
     type VARCHAR(500),
@@ -461,7 +461,7 @@ def combineAllData(**context):
 def loadToCSV(**context):
    data_list = context["ti"].xcom_pull(key="combined_data")
    df = pd.DataFrame(data_list)
-   df.to_csv(FILE_NAME, index=False)
+   df.to_csv(FILE_NAME, index=False, header=False)
 
 
 # CSV 파일 S3로 업로드하는 함수
@@ -477,9 +477,10 @@ def uploadToS3():
     
 
 # S3에서 Redshift로 COPY해서 적재하는 함수
-def loadToRedshift():
+def loadToRedshift(autocommit=True):
    redshift_hook = PostgresHook(postgres_conn_id='rs_conn')
    conn = redshift_hook.get_conn()
+   conn.autocommit = autocommit
    cursor = conn.cursor()
 
     # Redshift용 COPY 명령문
