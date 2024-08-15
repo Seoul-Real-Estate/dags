@@ -532,6 +532,6 @@ load_to_redshift_task = PythonOperator(
 CreatekindergardenTable >> GetDataCount >> DecideNextTask >> ExtractUniqueEstate
 DecideNextTask >> ExtractAllEstate >> DummyJoin
 DecideNextTask >> ExtractUniqueEstate >> DummyJoin
-DummyJoin >> TransformEstateData >> kindergarden_extract_task >> [kindergarden_transform_task_1, kindergarden_transform_task_2, kindergarden_transform_task_3, kindergarden_transform_task_4, kindergarden_transform_task_5, kindergarden_transform_task_6]
-[kindergarden_transform_task_1, kindergarden_transform_task_2, kindergarden_transform_task_3, kindergarden_transform_task_4, kindergarden_transform_task_5, kindergarden_transform_task_6] >> combine_all_data_task
+DummyJoin >> TransformEstateData >> kindergarden_extract_task >> kindergarden_transform_task_1 >> kindergarden_transform_task_2 >> kindergarden_transform_task_3 >> kindergarden_transform_task_4 >> kindergarden_transform_task_5 >> kindergarden_transform_task_6
+kindergarden_transform_task_6 >> combine_all_data_task
 combine_all_data_task >> load_to_csv_task >> upload_to_S3_task >> load_to_redshift_task
