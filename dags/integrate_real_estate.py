@@ -243,7 +243,7 @@ def update_real_estate_batch_region(records):
     WHERE id = %s
     """
     try:
-        cur.execute(query, records)
+        cur.executemany(query, records)
         logging.info(f'Data successfully batch update into {SCHEMA}.real_estate')
     except Exception as e:
         logging.error(f"Error Update {SCHEMA}.real_estate query: '{query}' | params: '{records}'"
