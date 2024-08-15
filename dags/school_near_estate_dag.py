@@ -33,7 +33,7 @@ dag = DAG(
 #  테이블 생성 쿼리
 CREATE_QUERY = """
 CREATE TABLE IF NOT EXISTS raw_data.school_near_estate (
-    estate_id INT,
+    estate_id VARCHAR(255),
     x FLOAT,
     y FLOAT,
     type VARCHAR(500),
@@ -202,7 +202,7 @@ def school_transform_1(**context):
         # logging.info(school_list)
 
         school_data = []
-        school_data.append(id)
+        school_data.append(str(id))
         school_data.append(a)
         school_data.append(b)
         school_data.append("학교")
@@ -247,7 +247,7 @@ def school_transform_2(**context):
         # logging.info(school_list)
 
         school_data = []
-        school_data.append(id)
+        school_data.append(str(id))
         school_data.append(a)
         school_data.append(b)
         school_data.append("학교")
@@ -293,7 +293,7 @@ def school_transform_3(**context):
         # logging.info(school_list)
 
         school_data = []
-        school_data.append(id)
+        school_data.append(str(id))
         school_data.append(a)
         school_data.append(b)
         school_data.append("학교")
@@ -339,7 +339,7 @@ def school_transform_4(**context):
         # logging.info(school_list)
 
         school_data = []
-        school_data.append(id)
+        school_data.append(str(id))
         school_data.append(a)
         school_data.append(b)
         school_data.append("학교")
@@ -385,7 +385,7 @@ def school_transform_5(**context):
         # logging.info(school_list)
 
         school_data = []
-        school_data.append(id)
+        school_data.append(str(id))
         school_data.append(a)
         school_data.append(b)
         school_data.append("학교")
@@ -431,7 +431,7 @@ def school_transform_6(**context):
         # logging.info(school_list)
 
         school_data = []
-        school_data.append(id)
+        school_data.append(str(id))
         school_data.append(a)
         school_data.append(b)
         school_data.append("학교")
@@ -608,6 +608,6 @@ load_to_redshift_task = PythonOperator(
 CreateschoolTable >> GetDataCount >> DecideNextTask >> ExtractUniqueEstate
 DecideNextTask >> ExtractAllEstate >> DummyJoin
 DecideNextTask >> ExtractUniqueEstate >> DummyJoin
-DummyJoin >> TransformEstateData >> school_extract_task >> [school_transform_task_1, school_transform_task_2, school_transform_task_3, school_transform_task_4, school_transform_task_5, school_transform_task_6]
-[school_transform_task_1, school_transform_task_2, school_transform_task_3, school_transform_task_4, school_transform_task_5, school_transform_task_6] >> combine_all_data_task
+DummyJoin >> TransformEstateData >> school_extract_task >> school_transform_task_1 >> school_transform_task_2 >> school_transform_task_3 >> school_transform_task_4 >> school_transform_task_5 >> school_transform_task_6
+school_transform_task_6 >> combine_all_data_task
 combine_all_data_task >> load_to_csv_task >> upload_to_S3_task >> load_to_redshift_task
