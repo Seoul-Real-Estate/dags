@@ -212,6 +212,43 @@ def get_new_naver_real_estate():
     return df
 
 
+def get_filtered_region_all_real_estate():
+    cur = get_redshift_connection()
+    query = f"""
+    SELECT id, latitude, longitude
+    FROM {SCHEMA}.real_estate
+    WHERE region_gu is NULL
+    AND region_dong is NULL 
+    """
+    cur.execute(query)
+    rows = cur.fetchall()
+    columns = [desc[0] for desc in cur.description]
+    df = pd.DataFrame(rows, columns=columns)
+    cur.close()
+    return df
+
+
+def update_real_estate_by(id, address, region_gu, region_dong, cortar_no):
+    cur = get_redshift_connection()
+    params = (address, region_gu, region_dong, cortar_no, id)
+    query = f"""
+        UPDATE {SCHEMA}.real_estate
+    SET 
+        address = %s, 
+        region_gu = %s, 
+        region_dong = %s, 
+        cortar_no = %s
+    WHERE id = %s
+    """
+    try:
+        cur.execute(query)
+        cur.close()
+    except Exception as e:
+        logging.error(f"Error Update {SCHEMA}.real_estate query: '{query}' | params: '{params}'"
+                      f"Error : {e}")
+        raise
+
+
 def convert_int_to_str(value):
     try:
         return str(int(float(value)))
@@ -357,14 +394,6 @@ def integrate_real_estate():
     def transform_naver_new_real_estate():
         today_naver_file_name = get_today_file_name(PREFIX_INTEGRATE + NAVER_REAL_ESTATE_FILE_NAME)
         naver_df = get_df_from_s3_csv(today_naver_file_name)
-        for idx, row in naver_df.iterrows():
-            _json = get_coordinate_convert_address(row["latitude"], row["longitude"])
-            if _json:
-                naver_df.loc[idx, "address"] = _json.get("address")
-                naver_df.loc[idx, "region_gu"] = _json.get("region_gu")
-                naver_df.loc[idx, "region_dong"] = _json.get("region_dong")
-                naver_df.loc[idx, "cortar_no"] = _json.get("cortar_no")
-
         str_columns = ["id", "complex_id", "realtor_id", "room_name", "room_type", "trade_type", "room_floor",
                        "building_floor", "direction", "room_title", "description", "hash_tags", "region_gu",
                        "region_dong", "address", "road_address", "etc_address", "is_parking", "heat_type",
@@ -417,14 +446,6 @@ def integrate_real_estate():
     def transform_dabang_new_real_estate():
         today_dabang_file_name = get_today_file_name(PREFIX_INTEGRATE + DABANG_REAL_ESTATE_FILE_NAME)
         dabang_df = get_df_from_s3_csv(today_dabang_file_name)
-        for idx, row in dabang_df.iterrows():
-            _json = get_coordinate_convert_address(row["latitude"], row["longitude"])
-            if _json:
-                dabang_df.loc[idx, "address"] = _json.get("address")
-                dabang_df.loc[idx, "region_gu"] = _json.get("region_gu")
-                dabang_df.loc[idx, "region_dong"] = _json.get("region_dong")
-                dabang_df.loc[idx, "cortar_no"] = _json.get("cortar_no")
-
         str_columns = ["id", "complex_id", "realtor_id", "room_name", "room_type", "trade_type", "room_floor",
                        "building_floor", "direction", "room_title", "description", "hash_tags", "region_gu",
                        "region_dong", "address", "road_address", "etc_address", "is_parking", "heat_type",
@@ -463,8 +484,23 @@ def integrate_real_estate():
         cur.close()
         logging.info(f'Data successfully loaded into {SCHEMA}.real_estate')
 
-    fetch_naver_new_real_estate() >> transform_naver_new_real_estate() >> load_to_redshift_naver_new_real_estate()
-    fetch_dabang_new_real_estate() >> transform_dabang_new_real_estate() >> load_to_redshift_dabang_new_real_estate()
+    @task
+    def fetch_vworld_coordinate_to_address():
+        real_estate_df = get_filtered_region_all_real_estate()
+        for idx, row in real_estate_df.iterrows():
+            _json = get_coordinate_convert_address(row["latitude"], row["longitude"])
+            if _json:
+                address = _json.get("address")
+                region_gu = _json.get("region_gu")
+                region_dong = _json.get("region_dong")
+                cortar_no = _json.get("cortar_no")
+                update_real_estate_by(row["id"], address, region_gu, region_dong, cortar_no)
+
+    load_to_redshift_naver = load_to_redshift_naver_new_real_estate()
+    load_to_redshift_dabang = load_to_redshift_dabang_new_real_estate()
+    fetch_vworld = fetch_vworld_coordinate_to_address()
+    fetch_naver_new_real_estate() >> transform_naver_new_real_estate() >> load_to_redshift_naver >> fetch_vworld
+    fetch_dabang_new_real_estate() >> transform_dabang_new_real_estate() >> load_to_redshift_dabang >> fetch_vworld
 
 
 integrate_real_estate()
