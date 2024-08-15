@@ -103,7 +103,7 @@ def extractUniqueEstate(**context):
     new_estate_sql = """
     SELECT A.id, A.longitude, A.latitude FROM raw_data.real_estate AS A
     LEFT JOIN raw_data.park_near_estate AS B
-    ON A.articleno = B.estate_id 
+    ON A.id = B.estate_id 
     WHERE B.estate_id IS NULL;
     """
         
@@ -161,12 +161,12 @@ def park_transform_1(**context):
 
     park_transformed_data = []
     park_df = pd.DataFrame(park_extracted_list, columns=['park_name', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         park_df["longitude_sub"] = park_df["longitude"] - a
         park_df["latitude_sub"] = park_df["latitude"] - b
         park_df["longitude_sub"] = park_df["longitude_sub"].abs()
@@ -196,12 +196,12 @@ def park_transform_2(**context):
 
     park_transformed_data = []
     park_df = pd.DataFrame(park_extracted_list, columns=['park_name', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         park_df["longitude_sub"] = park_df["longitude"] - a
         park_df["latitude_sub"] = park_df["latitude"] - b
         park_df["longitude_sub"] = park_df["longitude_sub"].abs()
@@ -232,12 +232,12 @@ def park_transform_3(**context):
 
     park_transformed_data = []
     park_df = pd.DataFrame(park_extracted_list, columns=['park_name', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         park_df["longitude_sub"] = park_df["longitude"] - a
         park_df["latitude_sub"] = park_df["latitude"] - b
         park_df["longitude_sub"] = park_df["longitude_sub"].abs()
@@ -268,12 +268,12 @@ def park_transform_4(**context):
 
     park_transformed_data = []
     park_df = pd.DataFrame(park_extracted_list, columns=['park_name', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         park_df["longitude_sub"] = park_df["longitude"] - a
         park_df["latitude_sub"] = park_df["latitude"] - b
         park_df["longitude_sub"] = park_df["longitude_sub"].abs()
@@ -304,12 +304,12 @@ def park_transform_5(**context):
 
     park_transformed_data = []
     park_df = pd.DataFrame(park_extracted_list, columns=['park_name', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         park_df["longitude_sub"] = park_df["longitude"] - a
         park_df["latitude_sub"] = park_df["latitude"] - b
         park_df["longitude_sub"] = park_df["longitude_sub"].abs()
@@ -340,12 +340,12 @@ def park_transform_6(**context):
 
     park_transformed_data = []
     park_df = pd.DataFrame(park_extracted_list, columns=['park_name', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         park_df["longitude_sub"] = park_df["longitude"] - a
         park_df["latitude_sub"] = park_df["latitude"] - b
         park_df["longitude_sub"] = park_df["longitude_sub"].abs()
