@@ -228,9 +228,8 @@ def get_filtered_region_all_real_estate():
     return df
 
 
-def update_real_estate_by(id, address, region_gu, region_dong, cortar_no):
+def update_real_estate_batch_region(records):
     cur = get_redshift_connection()
-    params = (address, region_gu, region_dong, cortar_no, id)
     query = f"""
         UPDATE {SCHEMA}.real_estate
     SET 
@@ -241,12 +240,13 @@ def update_real_estate_by(id, address, region_gu, region_dong, cortar_no):
     WHERE id = %s
     """
     try:
-        cur.execute(query, params)
-        cur.close()
+        cur.execute(query, records)
     except Exception as e:
         logging.error(f"Error Update {SCHEMA}.real_estate query: '{query}' | params: '{params}'"
                       f"Error : {e}")
         raise
+    finally:
+        cur.close()
 
 
 def convert_int_to_str(value):
@@ -476,17 +476,18 @@ def integrate_real_estate():
             PREFIX_TRANSFORM + PREFIX_INTEGRATE + DABANG_REAL_ESTATE_FILE_NAME)
         cur = get_redshift_connection()
         cur.execute(f"""
-                            COPY {SCHEMA}.real_estate
-                            FROM 's3://team-ariel-2-data/data/{today_transform_dabang_file_name}'
-                            IAM_ROLE '{iam_role}'
-                            CSV 
-                            IGNOREHEADER 1;""")
+                    COPY {SCHEMA}.real_estate
+                    FROM 's3://team-ariel-2-data/data/{today_transform_dabang_file_name}'
+                    IAM_ROLE '{iam_role}'
+                    CSV 
+                    IGNOREHEADER 1;""")
         cur.close()
         logging.info(f'Data successfully loaded into {SCHEMA}.real_estate')
 
     @task
     def fetch_vworld_coordinate_to_address():
         real_estate_df = get_filtered_region_all_real_estate()
+        batch_records = []
         for idx, row in real_estate_df.iterrows():
             _json = get_coordinate_convert_address(row["latitude"], row["longitude"])
             if _json:
@@ -494,7 +495,10 @@ def integrate_real_estate():
                 region_gu = _json.get("region_gu")
                 region_dong = _json.get("region_dong")
                 cortar_no = _json.get("cortar_no")
-                update_real_estate_by(row["id"], address, region_gu, region_dong, cortar_no)
+                batch_records.append((address, region_gu, region_dong, cortar_no, row["id"]))
+
+        if batch_records:
+            update_real_estate_batch_region(batch_records)
 
     load_to_redshift_naver = load_to_redshift_naver_new_real_estate()
     load_to_redshift_dabang = load_to_redshift_dabang_new_real_estate()
