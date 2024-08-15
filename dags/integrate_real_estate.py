@@ -217,8 +217,8 @@ def get_filtered_region_all_real_estate():
     query = f"""
     SELECT id, latitude, longitude
     FROM {SCHEMA}.real_estate
-    WHERE region_gu is NULL
-    AND region_dong is NULL 
+    WHERE region_gu = '-'
+    AND region_dong = '-' 
     """
     cur.execute(query)
     rows = cur.fetchall()
@@ -241,7 +241,7 @@ def update_real_estate_by(id, address, region_gu, region_dong, cortar_no):
     WHERE id = %s
     """
     try:
-        cur.execute(query)
+        cur.execute(query, params)
         cur.close()
     except Exception as e:
         logging.error(f"Error Update {SCHEMA}.real_estate query: '{query}' | params: '{params}'"
