@@ -94,7 +94,7 @@ def extractAllEstate(**context):
     redshift_hook = RedshiftSQLHook(redshift_conn_id='rs_conn')
     
     sql = """
-        SELECT articleno, longitude, latitude FROM raw_data.naver_real_estate;
+        SELECT id, longitude, latitude FROM raw_data.real_estate;
         """
         
     conn = redshift_hook.get_conn()
@@ -116,7 +116,7 @@ def extractUniqueEstate(**context):
     redshift_hook = RedshiftSQLHook(redshift_conn_id='rs_conn')
     
     new_estate_sql = """
-    SELECT A.articleno, A.longitude, A.latitude FROM raw_data.naver_real_estate AS A
+    SELECT A.id, A.longitude, A.latitude FROM raw_data.real_estate AS A
     LEFT JOIN raw_data.hospital_near_estate AS B
     ON A.articleno = B.estate_id 
     WHERE B.estate_id IS NULL;
