@@ -12,6 +12,7 @@ from airflow.providers.amazon.aws.hooks.redshift_sql import RedshiftSQLHook
 
 SCHEMA = "raw_data"
 BUCKET_NAME = "team-ariel-2-data"
+BATCH_SIZE = 1000
 PREFIX_INTEGRATE = "integrate_"
 PREFIX_TRANSFORM = "transform_"
 PREFIX_DATA = "data/"
@@ -218,7 +219,9 @@ def get_filtered_region_all_real_estate():
     SELECT id, latitude, longitude
     FROM {SCHEMA}.real_estate
     WHERE region_gu = '-'
-    AND region_dong = '-' 
+    AND region_dong = '-'
+    AND latitude != 0.0
+    AND longitude != 0.0
     """
     cur.execute(query)
     rows = cur.fetchall()
@@ -489,8 +492,6 @@ def integrate_real_estate():
     def fetch_vworld_coordinate_to_address():
         real_estate_df = get_filtered_region_all_real_estate()
         batch_records = []
-        batch_size = 10000
-
         for idx, row in real_estate_df.iterrows():
             _json = get_coordinate_convert_address(row["latitude"], row["longitude"])
             if _json:
@@ -500,7 +501,7 @@ def integrate_real_estate():
                 cortar_no = _json.get("cortar_no")
                 batch_records.append((address, region_gu, region_dong, cortar_no, row["id"]))
 
-            if len(batch_records) >= batch_size:
+            if len(batch_records) >= BATCH_SIZE:
                 update_real_estate_batch_region(batch_records)
                 batch_records.clear()
 
