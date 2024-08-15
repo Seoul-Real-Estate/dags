@@ -384,7 +384,7 @@ def get_coordinate_convert_address(latitude, longitude):
     tags=["daily", "real_estate", "integrate"]
 )
 def integrate_real_estate():
-    @task.short_circuit
+    @task.short_circuit(ignore_downstream_trigger_rules=False)
     def fetch_naver_new_real_estate():
         new_naver_real_estate_df = get_new_naver_real_estate()
         if new_naver_real_estate_df.empty:
@@ -436,7 +436,7 @@ def integrate_real_estate():
         cur.close()
         logging.info(f'Data successfully loaded into {SCHEMA}.real_estate')
 
-    @task.short_circuit
+    @task.short_circuit(ignore_downstream_trigger_rules=False)
     def fetch_dabang_new_real_estate():
         new_dabang_real_estate_df = get_new_dabang_real_estate()
         if new_dabang_real_estate_df.empty:
