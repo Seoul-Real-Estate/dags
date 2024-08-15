@@ -103,7 +103,7 @@ def extractUniqueEstate(**context):
     new_estate_sql = """
     SELECT A.id, A.longitude, A.latitude FROM raw_data.real_estate AS A
     LEFT JOIN raw_data.cinema_near_estate AS B
-    ON A.articleno = B.estate_id 
+    ON A.id = B.estate_id 
     WHERE B.estate_id IS NULL;
     """
         
@@ -161,12 +161,12 @@ def cinema_transform_1(**context):
 
     cinema_transformed_data = []
     cinema_df = pd.DataFrame(cinema_extracted_list, columns=['cinema_name', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         cinema_df["longitude_sub"] = cinema_df["longitude"] - a
         cinema_df["latitude_sub"] = cinema_df["latitude"] - b
         cinema_df["longitude_sub"] = cinema_df["longitude_sub"].abs()
@@ -196,12 +196,12 @@ def cinema_transform_2(**context):
 
     cinema_transformed_data = []
     cinema_df = pd.DataFrame(cinema_extracted_list, columns=['cinema_name', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         cinema_df["longitude_sub"] = cinema_df["longitude"] - a
         cinema_df["latitude_sub"] = cinema_df["latitude"] - b
         cinema_df["longitude_sub"] = cinema_df["longitude_sub"].abs()
@@ -232,12 +232,12 @@ def cinema_transform_3(**context):
 
     cinema_transformed_data = []
     cinema_df = pd.DataFrame(cinema_extracted_list, columns=['cinema_name', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         cinema_df["longitude_sub"] = cinema_df["longitude"] - a
         cinema_df["latitude_sub"] = cinema_df["latitude"] - b
         cinema_df["longitude_sub"] = cinema_df["longitude_sub"].abs()
@@ -268,12 +268,12 @@ def cinema_transform_4(**context):
 
     cinema_transformed_data = []
     cinema_df = pd.DataFrame(cinema_extracted_list, columns=['cinema_name', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         cinema_df["longitude_sub"] = cinema_df["longitude"] - a
         cinema_df["latitude_sub"] = cinema_df["latitude"] - b
         cinema_df["longitude_sub"] = cinema_df["longitude_sub"].abs()
@@ -304,12 +304,12 @@ def cinema_transform_5(**context):
 
     cinema_transformed_data = []
     cinema_df = pd.DataFrame(cinema_extracted_list, columns=['cinema_name', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         cinema_df["longitude_sub"] = cinema_df["longitude"] - a
         cinema_df["latitude_sub"] = cinema_df["latitude"] - b
         cinema_df["longitude_sub"] = cinema_df["longitude_sub"].abs()
@@ -340,12 +340,12 @@ def cinema_transform_6(**context):
 
     cinema_transformed_data = []
     cinema_df = pd.DataFrame(cinema_extracted_list, columns=['cinema_name', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         cinema_df["longitude_sub"] = cinema_df["longitude"] - a
         cinema_df["latitude_sub"] = cinema_df["latitude"] - b
         cinema_df["longitude_sub"] = cinema_df["longitude_sub"].abs()
