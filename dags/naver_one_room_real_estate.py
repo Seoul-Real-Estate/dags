@@ -257,7 +257,7 @@ def transform_one_room_df(one_room_df):
 @dag(
     default_args=default_args,
     description="네이버부동산 원룸/투룸 데이터 수집 및 적재 DAG",
-    schedule_interval='0 12 * * *',
+    schedule_interval='0 17 * * *',
     start_date=datetime(2024, 8, 5),
     catchup=False,
     tags=['daily', 'real_estate', 'naver', 'one_room']
