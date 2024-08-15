@@ -94,7 +94,7 @@ def extractAllEstate(**context):
     redshift_hook = RedshiftSQLHook(redshift_conn_id='rs_conn')
     
     sql = """
-        SELECT id, longitude, latitude FROM raw_data.real_estate;
+        SELECT id, longitude, latitude FROM raw_data.naver_real_estate;
         """
         
     conn = redshift_hook.get_conn()
@@ -116,9 +116,9 @@ def extractUniqueEstate(**context):
     redshift_hook = RedshiftSQLHook(redshift_conn_id='rs_conn')
     
     new_estate_sql = """
-    SELECT A.id, A.longitude, A.latitude FROM raw_data.real_estate AS A
+    SELECT A.id, A.longitude, A.latitude FROM raw_data.naver_real_estate AS A
     LEFT JOIN raw_data.culture_near_estate AS B
-    ON A.articleno = B.estate_id 
+    ON A.id = B.estate_id 
     WHERE B.estate_id IS NULL;
     """
         
@@ -175,12 +175,12 @@ def culture_transform_1(**context):
 
     culture_transformed_data = []
     culture_df = pd.DataFrame(culture_extracted_list, columns=['culture_name', 'culture_type', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         culture_df["longitude_sub"] = culture_df["longitude"] - a
         culture_df["latitude_sub"] = culture_df["latitude"] - b
         culture_df["longitude_sub"] = culture_df["longitude_sub"].abs()
@@ -220,12 +220,12 @@ def culture_transform_2(**context):
 
     culture_transformed_data = []
     culture_df = pd.DataFrame(culture_extracted_list, columns=['culture_name', 'culture_type', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         culture_df["longitude_sub"] = culture_df["longitude"] - a
         culture_df["latitude_sub"] = culture_df["latitude"] - b
         culture_df["longitude_sub"] = culture_df["longitude_sub"].abs()
@@ -266,12 +266,12 @@ def culture_transform_3(**context):
 
     culture_transformed_data = []
     culture_df = pd.DataFrame(culture_extracted_list, columns=['culture_name', 'culture_type', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         culture_df["longitude_sub"] = culture_df["longitude"] - a
         culture_df["latitude_sub"] = culture_df["latitude"] - b
         culture_df["longitude_sub"] = culture_df["longitude_sub"].abs()
@@ -312,12 +312,12 @@ def culture_transform_4(**context):
 
     culture_transformed_data = []
     culture_df = pd.DataFrame(culture_extracted_list, columns=['culture_name', 'culture_type', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         culture_df["longitude_sub"] = culture_df["longitude"] - a
         culture_df["latitude_sub"] = culture_df["latitude"] - b
         culture_df["longitude_sub"] = culture_df["longitude_sub"].abs()
@@ -358,12 +358,12 @@ def culture_transform_5(**context):
 
     culture_transformed_data = []
     culture_df = pd.DataFrame(culture_extracted_list, columns=['culture_name', 'culture_type', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         culture_df["longitude_sub"] = culture_df["longitude"] - a
         culture_df["latitude_sub"] = culture_df["latitude"] - b
         culture_df["longitude_sub"] = culture_df["longitude_sub"].abs()
@@ -404,12 +404,12 @@ def culture_transform_6(**context):
 
     culture_transformed_data = []
     culture_df = pd.DataFrame(culture_extracted_list, columns=['culture_name', 'culture_type', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         culture_df["longitude_sub"] = culture_df["longitude"] - a
         culture_df["latitude_sub"] = culture_df["latitude"] - b
         culture_df["longitude_sub"] = culture_df["longitude_sub"].abs()
@@ -607,5 +607,6 @@ load_to_redshift_task = PythonOperator(
 CreatecultureTable >> GetDataCount >> DecideNextTask >> ExtractUniqueEstate
 DecideNextTask >> ExtractAllEstate >> DummyJoin
 DecideNextTask >> ExtractUniqueEstate >> DummyJoin
-DummyJoin >> TransformEstateData >> culture_extract_task >> culture_transform_task_1 >> culture_transform_task_2 >> culture_transform_task_3 >> culture_transform_task_4 >> culture_transform_task_5 >> culture_transform_task_6
-culture_transform_task_6 >> combine_all_data_task >> load_to_csv_task >> upload_to_S3_task >> load_to_redshift_task
+DummyJoin >> TransformEstateData >> culture_extract_task >> [culture_transform_task_1, culture_transform_task_2, culture_transform_task_3, culture_transform_task_4, culture_transform_task_5, culture_transform_task_6]
+[culture_transform_task_1, culture_transform_task_2, culture_transform_task_3, culture_transform_task_4, culture_transform_task_5, culture_transform_task_6] >> combine_all_data_task
+combine_all_data_task >> load_to_csv_task >> upload_to_S3_task >> load_to_redshift_task
