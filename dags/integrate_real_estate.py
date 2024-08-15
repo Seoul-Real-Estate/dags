@@ -241,8 +241,9 @@ def update_real_estate_batch_region(records):
     """
     try:
         cur.execute(query, records)
+        logging.info(f'Data successfully batch update into {SCHEMA}.real_estate')
     except Exception as e:
-        logging.error(f"Error Update {SCHEMA}.real_estate query: '{query}' | params: '{params}'"
+        logging.error(f"Error Update {SCHEMA}.real_estate query: '{query}' | params: '{records}'"
                       f"Error : {e}")
         raise
     finally:
@@ -364,7 +365,7 @@ def get_coordinate_convert_address(latitude, longitude):
         logging.error(f"Error '{he.response}' message: '{res.text}' error: '{he}'")
         return None
     except KeyError as ke:
-        logging.error(f"Error KeyError {ke}")
+        logging.error(f"Error KeyError {ke}, latitude: {latitude}, longitude: {longitude}")
         return None
     except Exception as e:
         logging.warning(f"Error [get_apt_detail_info] message:'{e}'")
@@ -484,10 +485,12 @@ def integrate_real_estate():
         cur.close()
         logging.info(f'Data successfully loaded into {SCHEMA}.real_estate')
 
-    @task
+    @task(trigger_rule="none_failed")
     def fetch_vworld_coordinate_to_address():
         real_estate_df = get_filtered_region_all_real_estate()
         batch_records = []
+        batch_size = 10000
+
         for idx, row in real_estate_df.iterrows():
             _json = get_coordinate_convert_address(row["latitude"], row["longitude"])
             if _json:
@@ -496,6 +499,10 @@ def integrate_real_estate():
                 region_dong = _json.get("region_dong")
                 cortar_no = _json.get("cortar_no")
                 batch_records.append((address, region_gu, region_dong, cortar_no, row["id"]))
+
+            if len(batch_records) >= batch_size:
+                update_real_estate_batch_region(batch_records)
+                batch_records.clear()
 
         if batch_records:
             update_real_estate_batch_region(batch_records)
