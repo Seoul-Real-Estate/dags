@@ -118,7 +118,7 @@ def extractUniqueEstate(**context):
     new_estate_sql = """
     SELECT A.id, A.longitude, A.latitude FROM raw_data.real_estate AS A
     LEFT JOIN raw_data.school_near_estate AS B
-    ON A.articleno = B.estate_id 
+    ON A.id = B.estate_id 
     WHERE B.estate_id IS NULL;
     """
         
@@ -176,12 +176,12 @@ def school_transform_1(**context):
 
     school_transformed_data = []
     school_df = pd.DataFrame(school_extracted_list, columns=['school_name', 'school_type', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         school_df["longitude_sub"] = school_df["longitude"] - a
         school_df["latitude_sub"] = school_df["latitude"] - b
         school_df["longitude_sub"] = school_df["longitude_sub"].abs()
@@ -221,12 +221,12 @@ def school_transform_2(**context):
 
     school_transformed_data = []
     school_df = pd.DataFrame(school_extracted_list, columns=['school_name', 'school_type', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         school_df["longitude_sub"] = school_df["longitude"] - a
         school_df["latitude_sub"] = school_df["latitude"] - b
         school_df["longitude_sub"] = school_df["longitude_sub"].abs()
@@ -267,12 +267,12 @@ def school_transform_3(**context):
 
     school_transformed_data = []
     school_df = pd.DataFrame(school_extracted_list, columns=['school_name', 'school_type', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         school_df["longitude_sub"] = school_df["longitude"] - a
         school_df["latitude_sub"] = school_df["latitude"] - b
         school_df["longitude_sub"] = school_df["longitude_sub"].abs()
@@ -313,12 +313,12 @@ def school_transform_4(**context):
 
     school_transformed_data = []
     school_df = pd.DataFrame(school_extracted_list, columns=['school_name', 'school_type', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         school_df["longitude_sub"] = school_df["longitude"] - a
         school_df["latitude_sub"] = school_df["latitude"] - b
         school_df["longitude_sub"] = school_df["longitude_sub"].abs()
@@ -359,12 +359,12 @@ def school_transform_5(**context):
 
     school_transformed_data = []
     school_df = pd.DataFrame(school_extracted_list, columns=['school_name', 'school_type', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         school_df["longitude_sub"] = school_df["longitude"] - a
         school_df["latitude_sub"] = school_df["latitude"] - b
         school_df["longitude_sub"] = school_df["longitude_sub"].abs()
@@ -405,12 +405,12 @@ def school_transform_6(**context):
 
     school_transformed_data = []
     school_df = pd.DataFrame(school_extracted_list, columns=['school_name', 'school_type', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         school_df["longitude_sub"] = school_df["longitude"] - a
         school_df["latitude_sub"] = school_df["latitude"] - b
         school_df["longitude_sub"] = school_df["longitude_sub"].abs()
