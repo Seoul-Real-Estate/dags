@@ -118,7 +118,7 @@ def extractUniqueEstate(**context):
     new_estate_sql = """
     SELECT A.id, A.longitude, A.latitude FROM raw_data.real_estate AS A
     LEFT JOIN raw_data.hospital_near_estate AS B
-    ON A.articleno = B.estate_id 
+    ON A.id = B.estate_id 
     WHERE B.estate_id IS NULL;
     """
         
@@ -175,12 +175,12 @@ def hospital_transform_1(**context):
 
     hospital_transformed_data = []
     hospital_df = pd.DataFrame(hospital_extracted_list, columns=['hospital_name', 'hospital_type', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         hospital_df["longitude_sub"] = hospital_df["longitude"] - a
         hospital_df["latitude_sub"] = hospital_df["latitude"] - b
         hospital_df["longitude_sub"] = hospital_df["longitude_sub"].abs()
@@ -220,12 +220,12 @@ def hospital_transform_2(**context):
 
     hospital_transformed_data = []
     hospital_df = pd.DataFrame(hospital_extracted_list, columns=['hospital_name', 'hospital_type', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         hospital_df["longitude_sub"] = hospital_df["longitude"] - a
         hospital_df["latitude_sub"] = hospital_df["latitude"] - b
         hospital_df["longitude_sub"] = hospital_df["longitude_sub"].abs()
@@ -266,12 +266,12 @@ def hospital_transform_3(**context):
 
     hospital_transformed_data = []
     hospital_df = pd.DataFrame(hospital_extracted_list, columns=['hospital_name', 'hospital_type', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         hospital_df["longitude_sub"] = hospital_df["longitude"] - a
         hospital_df["latitude_sub"] = hospital_df["latitude"] - b
         hospital_df["longitude_sub"] = hospital_df["longitude_sub"].abs()
@@ -312,12 +312,12 @@ def hospital_transform_4(**context):
 
     hospital_transformed_data = []
     hospital_df = pd.DataFrame(hospital_extracted_list, columns=['hospital_name', 'hospital_type', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         hospital_df["longitude_sub"] = hospital_df["longitude"] - a
         hospital_df["latitude_sub"] = hospital_df["latitude"] - b
         hospital_df["longitude_sub"] = hospital_df["longitude_sub"].abs()
@@ -358,12 +358,12 @@ def hospital_transform_5(**context):
 
     hospital_transformed_data = []
     hospital_df = pd.DataFrame(hospital_extracted_list, columns=['hospital_name', 'hospital_type', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         hospital_df["longitude_sub"] = hospital_df["longitude"] - a
         hospital_df["latitude_sub"] = hospital_df["latitude"] - b
         hospital_df["longitude_sub"] = hospital_df["longitude_sub"].abs()
@@ -404,12 +404,12 @@ def hospital_transform_6(**context):
 
     hospital_transformed_data = []
     hospital_df = pd.DataFrame(hospital_extracted_list, columns=['hospital_name', 'hospital_type', 'longitude', 'latitude'])
-    address_df = pd.DataFrame(address_list, columns=['articleno', 'longitude', 'latitude'])
+    address_df = pd.DataFrame(address_list, columns=['id', 'longitude', 'latitude'])
 
     for index_1, row_1 in address_df.iterrows():
         a = float(row_1['longitude'])
         b = float(row_1['latitude'])
-        id = str(row_1['articleno'])
+        id = str(row_1['id'])
         hospital_df["longitude_sub"] = hospital_df["longitude"] - a
         hospital_df["latitude_sub"] = hospital_df["latitude"] - b
         hospital_df["longitude_sub"] = hospital_df["longitude_sub"].abs()
