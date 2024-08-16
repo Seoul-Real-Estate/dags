@@ -361,7 +361,7 @@ def cinema_transform_6(**context):
         cinema_data.append(str(id))
         cinema_data.append(a)
         cinema_data.append(b)
-        cinema_data.append("산과공원")
+        cinema_data.append("영화관")
         for i in range(len(cinema_list)):
             cinema_data.append(cinema_list[i][0])
             cinema_data.append(cinema_list[i][1])
