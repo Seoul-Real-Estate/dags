@@ -172,7 +172,7 @@ def kindergarden_transform_1(**context):
         kindergarden_df["longitude_sub"] = kindergarden_df["longitude_sub"].abs()
         kindergarden_df["latitude_sub"] = kindergarden_df["latitude_sub"].abs()
 
-        kindergarden_df = kindergarden_df.sort_values(by=['latitude', 'longitude'], ascending=[True, True])
+        kindergarden_df = kindergarden_df.sort_values(by=['latitude_sub', 'longitude_sub'], ascending=[True, True])
         kindergarden_df = kindergarden_df.drop(labels=["longitude_sub", "latitude_sub"], axis=1)
         kindergarden_df = kindergarden_df[:3]
         kindergarden_list = kindergarden_df.values.tolist()
@@ -207,7 +207,7 @@ def kindergarden_transform_2(**context):
         kindergarden_df["longitude_sub"] = kindergarden_df["longitude_sub"].abs()
         kindergarden_df["latitude_sub"] = kindergarden_df["latitude_sub"].abs()
 
-        kindergarden_df = kindergarden_df.sort_values(by=['latitude', 'longitude'], ascending=[True, True])
+        kindergarden_df = kindergarden_df.sort_values(by=['latitude_sub', 'longitude_sub'], ascending=[True, True])
         kindergarden_df = kindergarden_df.drop(labels=["longitude_sub", "latitude_sub"], axis=1)
         kindergarden_df = kindergarden_df[:3]
         kindergarden_list = kindergarden_df.values.tolist()
@@ -243,7 +243,7 @@ def kindergarden_transform_3(**context):
         kindergarden_df["longitude_sub"] = kindergarden_df["longitude_sub"].abs()
         kindergarden_df["latitude_sub"] = kindergarden_df["latitude_sub"].abs()
 
-        kindergarden_df = kindergarden_df.sort_values(by=['latitude', 'longitude'], ascending=[True, True])
+        kindergarden_df = kindergarden_df.sort_values(by=['latitude_sub', 'longitude_sub'], ascending=[True, True])
         kindergarden_df = kindergarden_df.drop(labels=["longitude_sub", "latitude_sub"], axis=1)
         kindergarden_df = kindergarden_df[:3]
         kindergarden_list = kindergarden_df.values.tolist()
@@ -279,7 +279,7 @@ def kindergarden_transform_4(**context):
         kindergarden_df["longitude_sub"] = kindergarden_df["longitude_sub"].abs()
         kindergarden_df["latitude_sub"] = kindergarden_df["latitude_sub"].abs()
 
-        kindergarden_df = kindergarden_df.sort_values(by=['latitude', 'longitude'], ascending=[True, True])
+        kindergarden_df = kindergarden_df.sort_values(by=['latitude_sub', 'longitude_sub'], ascending=[True, True])
         kindergarden_df = kindergarden_df.drop(labels=["longitude_sub", "latitude_sub"], axis=1)
         kindergarden_df = kindergarden_df[:3]
         kindergarden_list = kindergarden_df.values.tolist()
@@ -315,7 +315,7 @@ def kindergarden_transform_5(**context):
         kindergarden_df["longitude_sub"] = kindergarden_df["longitude_sub"].abs()
         kindergarden_df["latitude_sub"] = kindergarden_df["latitude_sub"].abs()
 
-        kindergarden_df = kindergarden_df.sort_values(by=['latitude', 'longitude'], ascending=[True, True])
+        kindergarden_df = kindergarden_df.sort_values(by=['latitude_sub', 'longitude_sub'], ascending=[True, True])
         kindergarden_df = kindergarden_df.drop(labels=["longitude_sub", "latitude_sub"], axis=1)
         kindergarden_df = kindergarden_df[:3]
         kindergarden_list = kindergarden_df.values.tolist()
@@ -351,7 +351,7 @@ def kindergarden_transform_6(**context):
         kindergarden_df["longitude_sub"] = kindergarden_df["longitude_sub"].abs()
         kindergarden_df["latitude_sub"] = kindergarden_df["latitude_sub"].abs()
 
-        kindergarden_df = kindergarden_df.sort_values(by=['latitude', 'longitude'], ascending=[True, True])
+        kindergarden_df = kindergarden_df.sort_values(by=['latitude_sub', 'longitude_sub'], ascending=[True, True])
         kindergarden_df = kindergarden_df.drop(labels=["longitude_sub", "latitude_sub"], axis=1)
         kindergarden_df = kindergarden_df[:3]
         kindergarden_list = kindergarden_df.values.tolist()
