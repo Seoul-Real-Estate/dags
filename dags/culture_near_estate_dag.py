@@ -17,6 +17,7 @@ import pandas as pd
 import math
 import numpy as np
 
+FILE_PATH = Variable.get("airflow_csv_dir")
 FILE_NAME = "culture_near_estate.csv"
 BUCKET_NAME = Variable.get('bucket_name')
 IAM_ROLE = Variable.get('aws_iam_role')
@@ -460,7 +461,7 @@ def combineAllData(**context):
 def loadToCSV(**context):
    data_list = context["ti"].xcom_pull(key="combined_data")
    df = pd.DataFrame(data_list)
-   df.to_csv(FILE_NAME, index=False, header=False)
+   df.to_csv(f"{FILE_PATH}/{FILE_NAME}", index=False, header=False)
 
 
 # CSV 파일 S3로 업로드하는 함수
@@ -468,7 +469,7 @@ def uploadToS3():
     bucket_name = BUCKET_NAME
     hook = S3Hook(aws_conn_id='S3_conn')
     hook.load_file(
-        filename=f'./{FILE_NAME}',
+        filename=f"{FILE_PATH}/{FILE_NAME}",
         key=f'data/{FILE_NAME}', 
         bucket_name= bucket_name, 
         replace=True
