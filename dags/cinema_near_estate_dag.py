@@ -172,8 +172,9 @@ def cinema_transform_1(**context):
         cinema_df["latitude_sub"] = cinema_df["latitude"] - b
         cinema_df["longitude_sub"] = cinema_df["longitude_sub"].abs()
         cinema_df["latitude_sub"] = cinema_df["latitude_sub"].abs()
+        logging.info(cinema_df["longitude_sub"])
 
-        cinema_df = cinema_df.sort_values(by=['latitude', 'longitude'], ascending=[True, True])
+        cinema_df = cinema_df.sort_values(by=['latitude_sub', 'longitude_sub'], ascending=[True, True])
         cinema_df = cinema_df.drop(labels=["longitude_sub", "latitude_sub"], axis=1)
         cinema_df = cinema_df[:3]
         cinema_list = cinema_df.values.tolist()
@@ -182,7 +183,7 @@ def cinema_transform_1(**context):
         cinema_data.append(str(id))
         cinema_data.append(a)
         cinema_data.append(b)
-        cinema_data.append("산과공원")
+        cinema_data.append("영화관")
         for i in range(len(cinema_list)):
             cinema_data.append(cinema_list[i][0])
             cinema_data.append(cinema_list[i][1])
@@ -208,7 +209,7 @@ def cinema_transform_2(**context):
         cinema_df["longitude_sub"] = cinema_df["longitude_sub"].abs()
         cinema_df["latitude_sub"] = cinema_df["latitude_sub"].abs()
 
-        cinema_df = cinema_df.sort_values(by=['latitude', 'longitude'], ascending=[True, True])
+        cinema_df = cinema_df.sort_values(by=['latitude_sub', 'longitude_sub'], ascending=[True, True])
         cinema_df = cinema_df.drop(labels=["longitude_sub", "latitude_sub"], axis=1)
         cinema_df = cinema_df[:3]
         cinema_list = cinema_df.values.tolist()
@@ -217,7 +218,7 @@ def cinema_transform_2(**context):
         cinema_data.append(str(id))
         cinema_data.append(a)
         cinema_data.append(b)
-        cinema_data.append("산과공원")
+        cinema_data.append("영화관")
         for i in range(len(cinema_list)):
             cinema_data.append(cinema_list[i][0])
             cinema_data.append(cinema_list[i][1])
@@ -244,7 +245,7 @@ def cinema_transform_3(**context):
         cinema_df["longitude_sub"] = cinema_df["longitude_sub"].abs()
         cinema_df["latitude_sub"] = cinema_df["latitude_sub"].abs()
 
-        cinema_df = cinema_df.sort_values(by=['latitude', 'longitude'], ascending=[True, True])
+        cinema_df = cinema_df.sort_values(by=['latitude_sub', 'longitude_sub'], ascending=[True, True])
         cinema_df = cinema_df.drop(labels=["longitude_sub", "latitude_sub"], axis=1)
         cinema_df = cinema_df[:3]
         cinema_list = cinema_df.values.tolist()
@@ -253,7 +254,7 @@ def cinema_transform_3(**context):
         cinema_data.append(str(id))
         cinema_data.append(a)
         cinema_data.append(b)
-        cinema_data.append("산과공원")
+        cinema_data.append("영화관")
         for i in range(len(cinema_list)):
             cinema_data.append(cinema_list[i][0])
             cinema_data.append(cinema_list[i][1])
@@ -280,7 +281,7 @@ def cinema_transform_4(**context):
         cinema_df["longitude_sub"] = cinema_df["longitude_sub"].abs()
         cinema_df["latitude_sub"] = cinema_df["latitude_sub"].abs()
 
-        cinema_df = cinema_df.sort_values(by=['latitude', 'longitude'], ascending=[True, True])
+        cinema_df = cinema_df.sort_values(by=['latitude_sub', 'longitude_sub'], ascending=[True, True])
         cinema_df = cinema_df.drop(labels=["longitude_sub", "latitude_sub"], axis=1)
         cinema_df = cinema_df[:3]
         cinema_list = cinema_df.values.tolist()
@@ -289,7 +290,7 @@ def cinema_transform_4(**context):
         cinema_data.append(str(id))
         cinema_data.append(a)
         cinema_data.append(b)
-        cinema_data.append("산과공원")
+        cinema_data.append("영화관")
         for i in range(len(cinema_list)):
             cinema_data.append(cinema_list[i][0])
             cinema_data.append(cinema_list[i][1])
@@ -316,7 +317,7 @@ def cinema_transform_5(**context):
         cinema_df["longitude_sub"] = cinema_df["longitude_sub"].abs()
         cinema_df["latitude_sub"] = cinema_df["latitude_sub"].abs()
 
-        cinema_df = cinema_df.sort_values(by=['latitude', 'longitude'], ascending=[True, True])
+        cinema_df = cinema_df.sort_values(by=['latitude_sub', 'longitude_sub'], ascending=[True, True])
         cinema_df = cinema_df.drop(labels=["longitude_sub", "latitude_sub"], axis=1)
         cinema_df = cinema_df[:3]
         cinema_list = cinema_df.values.tolist()
@@ -325,7 +326,7 @@ def cinema_transform_5(**context):
         cinema_data.append(str(id))
         cinema_data.append(a)
         cinema_data.append(b)
-        cinema_data.append("산과공원")
+        cinema_data.append("영화관")
         for i in range(len(cinema_list)):
             cinema_data.append(cinema_list[i][0])
             cinema_data.append(cinema_list[i][1])
@@ -352,7 +353,7 @@ def cinema_transform_6(**context):
         cinema_df["longitude_sub"] = cinema_df["longitude_sub"].abs()
         cinema_df["latitude_sub"] = cinema_df["latitude_sub"].abs()
 
-        cinema_df = cinema_df.sort_values(by=['latitude', 'longitude'], ascending=[True, True])
+        cinema_df = cinema_df.sort_values(by=['latitude_sub', 'longitude_sub'], ascending=[True, True])
         cinema_df = cinema_df.drop(labels=["longitude_sub", "latitude_sub"], axis=1)
         cinema_df = cinema_df[:3]
         cinema_list = cinema_df.values.tolist()
