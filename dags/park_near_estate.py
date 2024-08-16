@@ -173,7 +173,7 @@ def park_transform_1(**context):
         park_df["longitude_sub"] = park_df["longitude_sub"].abs()
         park_df["latitude_sub"] = park_df["latitude_sub"].abs()
 
-        park_df = park_df.sort_values(by=['latitude', 'longitude'], ascending=[True, True])
+        park_df = park_df.sort_values(by=['latitude_sub', 'longitude_sub'], ascending=[True, True])
         park_df = park_df.drop(labels=["longitude_sub", "latitude_sub"], axis=1)
         park_df = park_df[:3]
         park_list = park_df.values.tolist()
@@ -208,7 +208,7 @@ def park_transform_2(**context):
         park_df["longitude_sub"] = park_df["longitude_sub"].abs()
         park_df["latitude_sub"] = park_df["latitude_sub"].abs()
 
-        park_df = park_df.sort_values(by=['latitude', 'longitude'], ascending=[True, True])
+        park_df = park_df.sort_values(by=['latitude_sub', 'longitude_sub'], ascending=[True, True])
         park_df = park_df.drop(labels=["longitude_sub", "latitude_sub"], axis=1)
         park_df = park_df[:3]
         park_list = park_df.values.tolist()
@@ -244,7 +244,7 @@ def park_transform_3(**context):
         park_df["longitude_sub"] = park_df["longitude_sub"].abs()
         park_df["latitude_sub"] = park_df["latitude_sub"].abs()
 
-        park_df = park_df.sort_values(by=['latitude', 'longitude'], ascending=[True, True])
+        park_df = park_df.sort_values(by=['latitude_sub', 'longitude_sub'], ascending=[True, True])
         park_df = park_df.drop(labels=["longitude_sub", "latitude_sub"], axis=1)
         park_df = park_df[:3]
         park_list = park_df.values.tolist()
@@ -280,7 +280,7 @@ def park_transform_4(**context):
         park_df["longitude_sub"] = park_df["longitude_sub"].abs()
         park_df["latitude_sub"] = park_df["latitude_sub"].abs()
 
-        park_df = park_df.sort_values(by=['latitude', 'longitude'], ascending=[True, True])
+        park_df = park_df.sort_values(by=['latitude_sub', 'longitude_sub'], ascending=[True, True])
         park_df = park_df.drop(labels=["longitude_sub", "latitude_sub"], axis=1)
         park_df = park_df[:3]
         park_list = park_df.values.tolist()
@@ -316,7 +316,7 @@ def park_transform_5(**context):
         park_df["longitude_sub"] = park_df["longitude_sub"].abs()
         park_df["latitude_sub"] = park_df["latitude_sub"].abs()
 
-        park_df = park_df.sort_values(by=['latitude', 'longitude'], ascending=[True, True])
+        park_df = park_df.sort_values(by=['latitude_sub', 'longitude_sub'], ascending=[True, True])
         park_df = park_df.drop(labels=["longitude_sub", "latitude_sub"], axis=1)
         park_df = park_df[:3]
         park_list = park_df.values.tolist()
@@ -352,7 +352,7 @@ def park_transform_6(**context):
         park_df["longitude_sub"] = park_df["longitude_sub"].abs()
         park_df["latitude_sub"] = park_df["latitude_sub"].abs()
 
-        park_df = park_df.sort_values(by=['latitude', 'longitude'], ascending=[True, True])
+        park_df = park_df.sort_values(by=['latitude_sub', 'longitude_sub'], ascending=[True, True])
         park_df = park_df.drop(labels=["longitude_sub", "latitude_sub"], axis=1)
         park_df = park_df[:3]
         park_list = park_df.values.tolist()
