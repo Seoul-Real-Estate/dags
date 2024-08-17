@@ -125,7 +125,7 @@ def geocode_address(address):
     start_date=datetime(2024, 7, 10),
     schedule_interval="0 10 * * 6",  # 토요일 오전 10시 
     catchup=False,
-    tags=["analytics", "school", "infra", "raw_data"],
+    tags=["analytics", "weekly", "infra", "raw_data", "school"],
     default_args={
         "owner": "kain",
         "retries": 2,

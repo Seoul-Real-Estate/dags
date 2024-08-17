@@ -53,7 +53,8 @@ def execute_query(query, parameters=None, autocommit=True, fetchall=False, execu
 @dag(
     start_date=datetime(2024, 7, 10),
     catchup=False,
-    tags=["analytics", "infra"],
+    schedule_interval="0 18 * * 6",  
+    tags=["analytics", "infra", "weekly"],
     default_args={
         "owner": "kain",
         "retries": 2,

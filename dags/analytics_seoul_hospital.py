@@ -87,7 +87,7 @@ def fetch_gu_dong(x, y):
 @dag(
     start_date=datetime(2024, 8, 1),
     catchup=False,
-    tags=["hospital", "analytics", "infra"],
+    tags=["analytics", "infra", "monthly", "hospital"],
     default_args={
         "owner": "kain",
         "retries": 2,

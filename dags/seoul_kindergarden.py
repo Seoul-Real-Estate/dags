@@ -164,9 +164,9 @@ def get_dong_name(x, y):
 
 @dag(
     start_date=datetime(2024, 7, 10),
-    schedule_interval="0 10 * * 6",  # 매주 토요일 오전 10시
+    schedule_interval="50 9 * * 6",  # 매주 토요일 오전 9시 50분
     catchup=False,
-    tags=["weekly", "kindergarden", "raw_data", "analytics", "infra"],
+    tags=["weekly", "raw_data", "analytics", "infra", "kindergarden"],
     default_args={
         "owner": "kain",
         "retries": 2,

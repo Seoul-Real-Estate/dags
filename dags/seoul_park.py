@@ -126,7 +126,7 @@ def get_dong_name(x, y):
     start_date=datetime(2024, 7, 10),
     schedule_interval="0 10 * * 6",  # 한국 기준 토요일 오전 10시
     catchup=False,
-    tags=["infra", "park", "raw_data"],
+    tags=["infra", "weekly", "raw_data", "park"],
     default_args={
         "retries": 1,
         "retry_delay": timedelta(minutes=5),
