@@ -15,7 +15,7 @@ from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 kst = pendulum.timezone("Asia/Seoul")
 
 dag = DAG(
-    dag_id="seoul_hospital",
+    dag_id="seoul_hospital_v2",
     start_date=datetime(2024, 7, 16, tzinfo=kst),
     schedule_interval="0 0 28 * *",
     catchup=False
