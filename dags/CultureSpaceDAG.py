@@ -1,5 +1,6 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.postgres.operators.postgres import PostgresOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from datetime import datetime
@@ -15,13 +16,14 @@ kst = pendulum.timezone("Asia/Seoul")
 dag = DAG(
     dag_id='cultureSpaceDAG',
     start_date=datetime(2024, 7, 16, tzinfo=kst),
-    schedule_interval='0 0 * * 1',
+    schedule_interval='50 9 * * 6',
     catchup=False
 )
 
 # seoul_culture 테이블 생성 쿼리
 CREATE_QUERY = """
-CREATE TABLE IF NOT EXISTS raw_data.seoul_culture (
+DROP TABLE IF EXISTS raw_data.seoul_culture_temp;
+CREATE TABLE raw_data.seoul_culture_temp (
     number INT,
     subject_code VARCHAR(100),
     name VARCHAR(100),
@@ -29,6 +31,12 @@ CREATE TABLE IF NOT EXISTS raw_data.seoul_culture (
     lat FLOAT DEFAULT 0,
     lon FLOAT DEFAULT 0
 );
+"""
+
+# seoul_culture 테이블 rename 쿼리
+RENAME_QUERY = """
+DROP TABLE IF EXISTS raw_data.seoul_culture;
+ALTER TABLE raw_data.seoul_culture_temp RENAME TO seoul_culture;
 """
 
 # 데이터 개수 구하는 함수
@@ -153,4 +161,20 @@ CultureDataLoad = PythonOperator(
     dag=dag
 )
 
-createCultureTable >> getCultureTotalNumber >> CultureDataExtract >> CultureDataTransform >> CultureDataLoad
+# seoul_culture 테이블 생성 Task
+renameCultureTable = PostgresOperator(
+    task_id = "rename_culture_table",
+    postgres_conn_id='rs_conn',
+    sql=RENAME_QUERY,
+    dag=dag
+)
+
+# DAG trigger
+triggerAnalyticsCultureDag = TriggerDagRunOperator(
+    task_id="trigger_analytics_culture_dag",
+    trigger_dag_id="analytics_seoul_culture",  
+    wait_for_completion=False,  
+    reset_dag_run=True,  
+)
+
+createCultureTable >> getCultureTotalNumber >> CultureDataExtract >> CultureDataTransform >> renameCultureTable >> triggerAnalyticsCultureDag
