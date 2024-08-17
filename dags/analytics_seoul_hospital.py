@@ -1,4 +1,5 @@
 from airflow.decorators import task, dag
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.models import Variable
 from datetime import datetime, timedelta
@@ -85,7 +86,6 @@ def fetch_gu_dong(x, y):
 # DAG 정의
 @dag(
     start_date=datetime(2024, 8, 1),
-    schedule_interval="0 13 28 * *",  # 매월 28일 오후 1시
     catchup=False,
     tags=["hospital", "analytics", "infra"],
     default_args={
@@ -146,6 +146,12 @@ def analytics_seoul_hospital():
         """
         execute_query(rename_query, autocommit=False)
 
-    create_temp_table() >> add_columns() >> update_gu_dong() >> rename_table()
+    # Trigger task for analytics_seoul_infra DAG
+    trigger_next_dag = TriggerDagRunOperator(
+        task_id='trigger_infra_dag',
+        trigger_dag_id='analytics_seoul_infra' 
+    )
+
+    create_temp_table() >> add_columns() >> update_gu_dong() >> rename_table() >> trigger_next_dag
 
 analytics_seoul_hospital()
