@@ -18,7 +18,11 @@ dag = DAG(
     dag_id='seoul_hospital_v2',
     start_date=datetime(2024, 7, 16, tzinfo=kst),
     schedule_interval='0 0 28 * *',
-    catchup=False
+    catchup=False,
+    tags=["raw_data", "infra", "monthly", "hospital"],
+    default_args={
+        "owner": "sojeong",
+    }
 )
 
 # seoul_hospital 테이블 생성 쿼리

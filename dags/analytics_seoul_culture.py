@@ -83,9 +83,8 @@ def renamefetch_gu_and_dong(x, y):
 @dag(
     dag_id="analytics_seoul_culture",
     start_date=datetime(2024, 8, 1),
-    schedule_interval="0 13 * * 6",  # 매주 토요일 낮 1시
     catchup=False,
-    tags=["analytics", "seoul", "culture", "infra"],
+    tags=["analytics", "infra", "weekly", "culture"],
     default_args={
         "owner": "kain",
         "retries": 2,

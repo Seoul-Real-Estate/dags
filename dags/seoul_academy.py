@@ -125,9 +125,9 @@ def geocode(address):
 
 @dag(
     start_date=datetime(2024, 7, 10),
-    schedule_interval="0 10 * * 6",  # 토요일 오전 10시 실행
+    schedule_interval="50 9 * * 6",  
     catchup=False,
-    tags=["academy", "raw_data", "infra"],
+    tags=["academy", "raw_data", "infra", "weekly"],
     default_args={
         "owner": "kain",
         "retries": 2,

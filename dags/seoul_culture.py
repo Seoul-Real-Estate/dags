@@ -17,7 +17,11 @@ dag = DAG(
     dag_id='seoul_culture',
     start_date=datetime(2024, 7, 16, tzinfo=kst),
     schedule_interval='0 0 * * 1',
-    catchup=False
+    catchup=False,
+    tags=["raw_data", "infra", "weekly", "culture"],
+    default_args={
+        "owner": "sojeong",
+    }
 )
 
 # seoul_culture 테이블 생성 쿼리
@@ -154,7 +158,7 @@ CultureDataLoad = PythonOperator(
     dag=dag
 )
 
-# analytics_seoul_hospital 트리거
+# analytics_seoul_culture 트리거
 trigger_analytics_culture_dag = TriggerDagRunOperator(
     task_id="trigger_analytics_culture_dag",
     trigger_dag_id="analytics_seoul_culture",
