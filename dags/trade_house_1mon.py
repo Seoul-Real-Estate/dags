@@ -61,6 +61,10 @@ def house_trade_compare(reclass, before_fname, now_fname, columns):
     file_content = s3_hook.read_key(now_key, bucket_name)
     csv_buffer = StringIO(file_content)
     now_df = pd.read_csv(csv_buffer, header=0)
+    
+    # ensure both '건축년도' columns are of the same type before merging
+    before_df['건축년도'] = before_df['건축년도'].astype(str)  # or .astype(int) depending on your needs
+    now_df['건축년도'] = now_df['건축년도'].astype(str)  # or .astype(int) depending on your needs
 
     new_df = reclass.compare_add_latlon(before_df, now_df, columns)
     return new_df
