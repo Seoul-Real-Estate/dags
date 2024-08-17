@@ -1,5 +1,5 @@
+from airflow import DAG
 from airflow.decorators import task, dag
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.models import Variable
 from datetime import datetime, timedelta
@@ -124,7 +124,7 @@ def get_dong_name(x, y):
 # DAG 정의
 @dag(
     start_date=datetime(2024, 7, 10),
-    schedule_interval="0 10 * * 6",  # 한국 기준 토요일 오전 10시
+    schedule_interval="0 1 * * 6",  # 한국 기준 토요일 오전 1시
     catchup=False,
     tags=["infra", "park", "raw_data"],
     default_args={
@@ -133,7 +133,6 @@ def get_dong_name(x, y):
         "owner": "kain",
     }
 )
-
 def seoul_park():
     # 테이블 생성 task
     @task
@@ -207,21 +206,12 @@ def seoul_park():
         """
         execute_query(rename_query, autocommit=False)
 
-
-    # DAG trigger
-    trigger_orchestrator_dag = TriggerDagRunOperator(
-        task_id="trigger_orchestrator_dag",
-        trigger_dag_id="infra_trigger",  
-        wait_for_completion=False,  
-        reset_dag_run=True,  
-    )
-
     create_temp_table_task = create_temp_table()
     process_data_task = process_data()
     add_dong_data_task = add_dong_data(process_data_task)
     load_temp_table_task = load_temp_table(add_dong_data_task)
     rename_tables_task = rename_tables()
 
-    trigger_orchestrator_dag >> create_temp_table_task >> process_data_task >> add_dong_data_task >> load_temp_table_task >> rename_tables_task 
+    create_temp_table_task >> process_data_task >> add_dong_data_task >> load_temp_table_task >> rename_tables_task
 
 seoul_park()

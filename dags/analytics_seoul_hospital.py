@@ -1,5 +1,4 @@
 from airflow.decorators import task, dag
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.models import Variable
 from datetime import datetime, timedelta
@@ -147,12 +146,6 @@ def analytics_seoul_hospital():
         """
         execute_query(rename_query, autocommit=False)
 
-    # Trigger task for analytics_seoul_infra DAG
-    trigger_next_dag = TriggerDagRunOperator(
-        task_id='trigger_infra_dag',
-        trigger_dag_id='analytics_seoul_infra' 
-    )
-
-    create_temp_table() >> add_columns() >> update_gu_dong() >> rename_table() >> trigger_next_dag
+    create_temp_table() >> add_columns() >> update_gu_dong() >> rename_table()
 
 analytics_seoul_hospital()
