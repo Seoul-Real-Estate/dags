@@ -1,6 +1,7 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+from airflow.providers.postgres.operators.postgres import PostgresOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.models.variable import Variable
 from datetime import datetime
@@ -9,91 +10,42 @@ import logging
 import xml.etree.ElementTree as ET
 import pendulum
 import pandas as pd
-import psycopg2
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 
 kst = pendulum.timezone("Asia/Seoul")
 
 dag = DAG(
-    dag_id="seoul_hospital_v2",
+    dag_id='seoul_hospital_v2',
     start_date=datetime(2024, 7, 16, tzinfo=kst),
-    schedule_interval="0 0 28 * *",
+    schedule_interval='0 0 28 * *',
     catchup=False
 )
 
-# Redshift 연결 함수
-def get_redshift_connection(autocommit=True):
-    hook = PostgresHook(postgres_conn_id="redshift_dev")
-    conn = hook.get_conn()
-    conn.autocommit = autocommit
-    return conn
-
-
-# 쿼리문 실행시키는 함수
-def execute_query(query, parameters=None, autocommit=True, fetchall=False, executemany=False):
-    conn = get_redshift_connection(autocommit)
-    cur = conn.cursor()
-    try:
-        if not autocommit:
-            cur.execute("BEGIN;")
-        
-        if parameters:
-            if executemany:
-                cur.executemany(query, parameters)
-            else:
-                cur.execute(query, parameters)
-        else:
-            cur.execute(query)
-        
-        if not autocommit:
-            cur.execute("COMMIT;")
-        
-        if fetchall:
-            return cur.fetchall()
-    except psycopg2.DatabaseError as db_error:
-        logging.error(f"Database error: {db_error}")
-        cur.execute("ROLLBACK;")
-        raise
-    except Exception as error:
-        logging.error(f"execute query error: {error}")
-        cur.execute("ROLLBACK;")
-        raise
-    finally:
-        cur.close()
-        conn.close()
-
-
-# 테이블 생성 함수
-def create_table():
-    create_query = """
-    DROP TABLE IF EXISTS raw_data.seoul_hospital_temp;
-    CREATE TABLE raw_data.seoul_hospital_temp (
-        id VARCHAR(10),
-        address VARCHAR(200),
-        type_name VARCHAR(30),
-        name VARCHAR(100),
-        zip_code_1 INT,
-        zip_code_2 INT,
-        lat FLOAT DEFAULT 0,
-        lon FLOAT DEFAULT 0
-    );
-    """
-    execute_query(create_query, autocommit=False)
-
+# seoul_hospital 테이블 생성 쿼리
+CREATE_QUERY = """
+CREATE TABLE IF NOT EXISTS raw_data.seoul_hospital (
+    id VARCHAR(10),
+    address VARCHAR(200),
+    type_name VARCHAR(30),
+    name VARCHAR(100),
+    zip_code_1 INT,
+    zip_code_2 INT,
+    lat FLOAT DEFAULT 0,
+    lon FLOAT DEFAULT 0
+);
+"""
 
 # 데이터 개수 구하는 함수
-def get_total_number():
-    url = "http://openapi.seoul.go.kr:8088/574263537a736a653131326e49736b65/xml/TbHospitalInfo/1/2"
+def getTotalNumber():
+    url = 'http://openapi.seoul.go.kr:8088/574263537a736a653131326e49736b65/xml/TbHospitalInfo/1/2'
     response = requests.get(url)
     if response.status_code == 200:
-        xml_data = ET.fromstring(response.text)
-        total_number = xml_data.find("list_total_count").text
+        xml_data = ET.fromstring(str(response.text))
+        total_number = xml_data.find('list_total_count').text
     else:
-        logging.error("Total Number Error: " + str(response.status_code))
-        raise Exception("Failed to get total number from API")
+        logging.info("Total Number Error : " + response.status_code)
     logging.info("Got Total Number")
     return total_number
-
 
 # 서울시 병의원 API에서 데이터 추출 후 CSV로 저장
 def extract(**context):
@@ -143,80 +95,74 @@ def extract(**context):
     logging.info("Extract done")
     return file_path
 
-
 # CSV 파일 S3로 업로드하는 함수
-def upload_to_s3(file_path, **kwargs):
-    bucket_name = "team-ariel-2-data"
-    hook = S3Hook(aws_conn_id="S3_conn")
+def upload_to_S3(file_path, **kwargs):
+    bucket_name = 'team-ariel-2-data'
+    hook = S3Hook(aws_conn_id='S3_conn')
     hook.load_file(
         filename=file_path,
-        key="data/seoul_hospital.csv",
-        bucket_name=bucket_name,
+        key='data/seoul_hospital.csv', 
+        bucket_name= bucket_name, 
         replace=True
     )
-    logging.info("Uploaded to S3")
-
 
 # S3에서 Redshift로 COPY해서 적재하는 함수
 def load_to_redshift():
-    copy_query = """
+    redshift_hook = PostgresHook(postgres_conn_id='redshift_dev')
+    conn = redshift_hook.get_conn()
+    cursor = conn.cursor()
+
+    # Redshift용 COPY 명령문
+    copy_query = f"""
     COPY raw_data.seoul_hospital
     FROM 's3://team-ariel-2-data/data/seoul_hospital.csv'
     IAM_ROLE 'arn:aws:iam::862327261051:role/service-role/AmazonRedshift-CommandsAccessRole-20240716T180249'
     CSV
     IGNOREHEADER 1;
     """
-    execute_query(copy_query)
-    logging.info("Data loaded to Redshift")
+
+    cursor.execute(copy_query)
+    conn.commit()
+    cursor.close()
 
 
-# 테이블 이름 변경 Task
-def rename_table():
-    rename_query = """
-    DROP TABLE IF EXISTS raw_data.seoul_hospital;
-    ALTER TABLE raw_data.seoul_hospital_temp RENAME TO seoul_hospital;
-    """
-    execute_query(rename_query, autocommit=False)
 
-
-create_hospital_table = PythonOperator(
-    task_id="create_hospital_table",
-    python_callable=create_table,
+# hospital 테이블 생성 Task
+createHospitalTable = PostgresOperator(
+    task_id = "create_hospital_table",
+    postgres_conn_id='redshift_dev',
+    sql=CREATE_QUERY,
     dag=dag
 )
 
-get_hospital_total_number = PythonOperator(
-    task_id="get_hospital_total_number",
-    python_callable=get_total_number,
+# 데이터 개수 구하는 Task
+getHospitalTotalNumber = PythonOperator(
+    task_id = 'get_hospital_total_number',
+    python_callable = getTotalNumber,
     dag=dag
 )
 
-hospital_data_extract = PythonOperator(
-    task_id="hospital_extract",
+# 데이터 추출 후 CSV로 저장하는 Task
+hospitalDataExtract = PythonOperator(
+    task_id = "hospital_extract",
     python_callable=extract,
     params={
-        "url": "http://openapi.seoul.go.kr:8088/574263537a736a653131326e49736b65/xml/TbHospitalInfo/"
+        'url': 'http://openapi.seoul.go.kr:8088/574263537a736a653131326e49736b65/xml/TbHospitalInfo/'
     },
     dag=dag
 )
 
-upload_data_to_s3 = PythonOperator(
-    task_id="upload_to_s3",
-    python_callable=upload_to_s3,
-    op_kwargs={"file_path": "{{ task_instance.xcom_pull(task_ids='hospital_extract') }}"},
-    dag=dag
+# CSV 파일 S3에 저장하는 Task
+upload_data_to_S3 = PythonOperator(
+    task_id = "upload_to_S3",
+    python_callable=upload_to_S3,
+    op_kwargs={'file_path': '{{ task_instance.xcom_pull(task_ids="hospital_extract") }}'}
 )
 
+# S3에서 Redshift로 COPY해서 적재하는 Task
 load_data_to_redshift = PythonOperator(
-    task_id="load_to_redshift",
-    python_callable=load_to_redshift,
-    dag=dag
-)
-
-rename_hospital_table = PythonOperator(
-    task_id="rename_hospital_table",
-    python_callable=rename_table,
-    dag=dag
+    task_id = "load_to_redshift",
+    python_callable=load_to_redshift
 )
 
 # analytics_seoul_hospital 트리거
@@ -228,4 +174,5 @@ trigger_analytics_hospital_dag = TriggerDagRunOperator(
     dag=dag
 )
 
-create_hospital_table >> get_hospital_total_number >> hospital_data_extract >> upload_data_to_s3 >> load_data_to_redshift >> rename_hospital_table >> trigger_analytics_hospital_dag
+
+createHospitalTable >> getHospitalTotalNumber >> hospitalDataExtract >> upload_data_to_S3 >> load_data_to_redshift >> trigger_analytics_hospital_dag
