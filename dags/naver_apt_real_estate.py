@@ -1,9 +1,8 @@
-import logging
-import pandas as pd
 from datetime import datetime, timedelta
 from utils.redshift_utils import *
 from utils.aws_utils import *
 from utils.naver_utils import *
+from utils.transform_utils import *
 from airflow.decorators import task, dag, task_group
 
 SCHEMA = "raw_data"
@@ -25,16 +24,6 @@ default_args = {
     "retries": 3,
     "retry_delay": timedelta(minutes=10),
 }
-
-
-# 숫자 변환 시 에러가 발생하는 값은 NaN으로 대체
-def clean_numeric_column(df, column_name):
-    df[column_name] = pd.to_numeric(df[column_name], errors='coerce')
-
-
-def get_today_file_name(file_name):
-    today = datetime.now().strftime('%Y-%m-%d')
-    return f'{today}_{file_name}'
 
 
 def add_necessary_columns(df, columns):
