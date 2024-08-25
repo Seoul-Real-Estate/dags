@@ -403,6 +403,13 @@ def naver_apt_real_estate():
             complex_df.drop(columns=['detailAddress', 'roadAddress', 'roadAddressPrefix'], inplace=True)
             complex_df['useApproveYmd'] = complex_df['useApproveYmd'].fillna(0).astype(str)
             complex_df['parkingPossibleCount'] = complex_df['parkingPossibleCount'].fillna(0).astype(int)
+            desired_columns = ["complexNo", "complexName", "cortarNo", "realEstateTypeCode", "realEstateTypeName",
+                               "latitude", "longitude", "totalHouseholdCount", "useApproveYmd", "address",
+                               "maxSupplyArea", "minSupplyArea", "parkingPossibleCount", "parkingCountByHousehold",
+                               "constructionCompanyName", "heatMethodTypeCode", "heatFuelTypeCode", "pyoengNames",
+                               "managementOfficeTelNo", "roadZipCode", "road_address", "created_at", "updated_at",
+                               ]
+            complex_df = complex_df[desired_columns]
             upload_to_s3(today_complex_file_name, complex_df)
 
         # 5. 아파트 단지 redshift 적재
