@@ -8,6 +8,8 @@ APT_COMPLEX_DETAIL_PARAMS = {"sameAddressGroup": "false"}
 APT_REAL_ESTATE_URL = "https://new.land.naver.com/api/articles/complex/"
 APT_REAL_ESTATE_DETAIL_URL = "https://new.land.naver.com/api/articles/"
 APT_REAL_ESTATE_DETAIL_PARAMS = {"complexNo": ""}
+VILLA_URL = "https://new.land.naver.com/api/articles"
+VILLA_DETAIL_PARAMS = {"complexNo": ""}
 BASE_HEADERS = {
     "Accept-Encoding": "gzip",
     "Host": "new.land.naver.com",
@@ -82,3 +84,44 @@ def get_real_estate_detail(articleNo):
     naver_token = Variable.get('naver_token')
     headers.update({"Authorization": f"{naver_token}"})
     return requests_utils.get_json(url, params=APT_REAL_ESTATE_DETAIL_PARAMS, headers=headers)
+
+
+def get_villa_real_estate(cortarNo):
+    params = {
+        "cortarNo": int(cortarNo),
+        "order": "rank",
+        "realEstateType": "JWJT:HOJT:VL:DDDGG:SGJT",
+        "tradeType": "",
+        "tag": " ::::::::",
+        "rentPriceMin": " 0",
+        "rentPriceMax": " 900000000",
+        "priceMin": " 0",
+        "priceMax": " 900000000",
+        "areaMin": " 0",
+        "areaMax": " 900000000",
+        "oldBuildYears": "",
+        "recentlyBuildYears": "",
+        "minHouseHoldCount": "",
+        "maxHouseHoldCount": "",
+        "showArticle": " false",
+        "sameAddressGroup": " false",
+        "minMaintenanceCost": "",
+        "maxMaintenanceCost": "",
+        "priceType": " RETAIL",
+        "directions": "",
+        "page": " 1",
+        "articleState": ""
+    }
+    headers = BASE_HEADERS.copy()
+    naver_token = Variable.get("naver_token")
+    headers.update({"Authorization": f"{naver_token}"})
+    _json = requests_utils.get_json(VILLA_URL, params=params, headers=headers)
+    return pd.DataFrame(_json["articleList"])
+
+
+def get_villa_real_estate_detail(articleNo):
+    url = VILLA_URL + f"/{articleNo}"
+    headers = BASE_HEADERS.copy()
+    naver_token = Variable.get("naver_token")
+    headers.update({"Authorization": f"{naver_token}"})
+    return requests_utils.get_json(url, params=VILLA_DETAIL_PARAMS, headers=headers)
