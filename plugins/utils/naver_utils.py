@@ -8,6 +8,8 @@ APT_COMPLEX_DETAIL_PARAMS = {"sameAddressGroup": "false"}
 APT_REAL_ESTATE_URL = "https://new.land.naver.com/api/articles/complex/"
 APT_REAL_ESTATE_DETAIL_URL = "https://new.land.naver.com/api/articles/"
 APT_REAL_ESTATE_DETAIL_PARAMS = {"complexNo": ""}
+VILLA_URL = "https://new.land.naver.com/api/articles"
+ONE_ROOM_URL = "https://new.land.naver.com/api/articles"
 BASE_HEADERS = {
     "Accept-Encoding": "gzip",
     "Host": "new.land.naver.com",
@@ -32,7 +34,7 @@ def get_apt_complex(cortarNo):
 
 
 def get_apt_complex_detail(complexNo):
-    url = APT_COMPLEX_DETAIL_URL + complexNo
+    url = APT_COMPLEX_DETAIL_URL + str(complexNo)
     headers = BASE_HEADERS.copy()
     naver_token = Variable.get("naver_token")
     headers.update({"Authorization": f"{naver_token}"})
@@ -41,7 +43,7 @@ def get_apt_complex_detail(complexNo):
 
 
 def get_apt_real_estate(complexNo):
-    url = APT_REAL_ESTATE_URL + complexNo
+    url = APT_REAL_ESTATE_URL + str(complexNo)
     params = {
         "realEstateType": "APT",
         "tag": "%3A%3A%3A%3A%3A%3A%3A%3",
@@ -77,8 +79,90 @@ def get_apt_real_estate(complexNo):
 
 
 def get_real_estate_detail(articleNo):
-    url = APT_REAL_ESTATE_DETAIL_URL + articleNo
+    url = APT_REAL_ESTATE_DETAIL_URL + str(articleNo)
     headers = BASE_HEADERS.copy()
     naver_token = Variable.get('naver_token')
+    headers.update({"Authorization": f"{naver_token}"})
+    return requests_utils.get_json(url, params=APT_REAL_ESTATE_DETAIL_PARAMS, headers=headers)
+
+
+def get_villa_real_estate(cortarNo):
+    params = {
+        "cortarNo": int(cortarNo),
+        "order": "rank",
+        "realEstateType": "JWJT:HOJT:VL:DDDGG:SGJT",
+        "tradeType": "",
+        "tag": " ::::::::",
+        "rentPriceMin": " 0",
+        "rentPriceMax": " 900000000",
+        "priceMin": " 0",
+        "priceMax": " 900000000",
+        "areaMin": " 0",
+        "areaMax": " 900000000",
+        "oldBuildYears": "",
+        "recentlyBuildYears": "",
+        "minHouseHoldCount": "",
+        "maxHouseHoldCount": "",
+        "showArticle": " false",
+        "sameAddressGroup": " false",
+        "minMaintenanceCost": "",
+        "maxMaintenanceCost": "",
+        "priceType": " RETAIL",
+        "directions": "",
+        "page": " 1",
+        "articleState": ""
+    }
+    headers = BASE_HEADERS.copy()
+    naver_token = Variable.get("naver_token")
+    headers.update({"Authorization": f"{naver_token}"})
+    _json = requests_utils.get_json(VILLA_URL, params=params, headers=headers)
+    return pd.DataFrame(_json["articleList"])
+
+
+def get_villa_real_estate_detail(articleNo):
+    url = VILLA_URL + f"/{articleNo}"
+    headers = BASE_HEADERS.copy()
+    naver_token = Variable.get("naver_token")
+    headers.update({"Authorization": f"{naver_token}"})
+    return requests_utils.get_json(url, params=APT_REAL_ESTATE_DETAIL_PARAMS, headers=headers)
+
+
+def get_one_room_real_estate(cortarNo):
+    params = {
+        "cortarNo": int(cortarNo),
+        "order": "rank",
+        "realEstateType": "OPST:ABYG:OBYG:GM:OR:VL:DDDGG:JWJT:SGJT:HOJT",
+        "tradeType": "",
+        "tag": ":::::::SMALLSPCRENT:",
+        "rentPriceMin": "0",
+        "rentPriceMax": "900000000",
+        "priceMin": "0",
+        "priceMax": "900000000",
+        "areaMin": "0",
+        "areaMax": "900000000",
+        "oldBuildYears": "",
+        "recentlyBuildYears": "",
+        "minHouseHoldCount": "",
+        "maxHouseHoldCount": "",
+        "showArticle": "false",
+        "sameAddressGroup": "false",
+        "minMaintenanceCost": "",
+        "maxMaintenanceCost": "",
+        "priceType": "RETAIL",
+        "directions": "",
+        "page": "1",
+        "articleState": ""
+    }
+    headers = BASE_HEADERS.copy()
+    naver_token = Variable.get("naver_token")
+    headers.update({"Authorization": f"{naver_token}"})
+    _json = requests_utils.get_json(ONE_ROOM_URL, params=params, headers=headers)
+    return pd.DataFrame(_json["articleList"])
+
+
+def get_one_room_real_estate_detail(articleNo):
+    url = ONE_ROOM_URL + f"/{articleNo}"
+    headers = BASE_HEADERS.copy()
+    naver_token = Variable.get("naver_token")
     headers.update({"Authorization": f"{naver_token}"})
     return requests_utils.get_json(url, params=APT_REAL_ESTATE_DETAIL_PARAMS, headers=headers)
