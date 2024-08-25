@@ -280,7 +280,7 @@ def naver_apt_real_estate():
         @task
         def process_apt_real_estate_detail():
             today_real_estate_file_name = get_today_file_name(REAL_ESTATE_FILE_NAME)
-            apt_df = aws_utils.get_df_from_s3_csv(today_real_estate_file_name)
+            apt_df = get_df_from_s3_csv(today_real_estate_file_name)
             realtor_infos = []
             necessary_columns = [
                 'complexNo', 'articleName', 'detailAddress', 'exposureAddress', 'parkingCount', 'parkingPossibleYN',
