@@ -42,11 +42,11 @@ def load_to_redshift_from_s3_csv(schema: str, table: str, s3_path: str):
         cur = conn.cursor()
         cur.execute(f"""
             COPY {schema}.{table}
-            FROM {s3_path}
-            IAM_ROLE "{iam_role}"
+            FROM '{s3_path}'
+            IAM_ROLE '{iam_role}'
             CSV
             IGNOREHEADER 1;""")
-        logging.info(f'SUCCESS AWS Redshift loaded into {schema}.{table}')
+        logging.info(f"SUCCESS AWS Redshift loaded into {schema}.{table}")
     except Exception as e:
         logging.error(f"Error Failed to COPY {schema}.{table} from {s3_path}: {e}")
         raise
