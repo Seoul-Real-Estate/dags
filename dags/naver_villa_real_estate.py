@@ -1,7 +1,4 @@
-import logging
-from datetime import datetime, timedelta, date
-
-import pandas as pd
+from datetime import datetime, timedelta
 from airflow.decorators import task, dag, task_group
 from utils.redshift_utils import *
 from utils.aws_utils import *
